@@ -1,4 +1,4 @@
-package kdeploy_metadata
+package main
 
 import (
 	"testing"

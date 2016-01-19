@@ -1,4 +1,4 @@
-package kdeploy_metadata
+package main
 
 import (
 	"fmt"
@@ -29,6 +29,7 @@ type Metadata struct {
 	Svc         map[string]string
 }
 
+// AttributeDefaults returns default values for attributes
 func (m Metadata) AttributeDefaults() (digger.Digger, error) {
 	defaults, err := defaultsMapFromMetadata(m.Attributes)
 	if err != nil {
