@@ -1,0 +1,26 @@
+{{ $frontend_replicas  := getNumber "rc/frontend/number" }}
+{{ $container_name     := getString "rc/frontend/container/name" }}
+{{ $container_image    := getString "rc/frontend/container/image" }}
+{{ $container_version  := getString "rc/frontend/container/version" }}
+{{ $container_port     := getNumber "rc/frontend/container/port" }}
+
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: frontend
+  labels:
+    name: frontend
+spec:
+  replicas: {{ $frontend_replicas }}
+  selector:
+    name: frontend
+  template:
+    metadata:
+      labels:
+        name: frontend
+    spec:
+      containers:
+      - name: {{ $container_name }}
+        image: {{ $container_image }}:{{ $container_version }}
+        ports:
+        - containerPort: {{ $container_port }}
