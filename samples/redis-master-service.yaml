@@ -1,4 +1,4 @@
-{{ $port := getNumber "svc/redis-master/port" }}
+{{ $port := attr "svc/redis-master/port" }}
 
 apiVersion: v1
 kind: Service

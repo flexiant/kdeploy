@@ -10,6 +10,7 @@ import (
 	"github.com/flexiant/digger"
 )
 
+// ResolveTemplate resolves a template according to the attributes passed
 func ResolveTemplate(templatePath string, attributes digger.Digger) (string, error) {
 	templateFile, err := filepath.Abs(templatePath)
 	if err != nil {
@@ -21,9 +22,7 @@ func ResolveTemplate(templatePath string, attributes digger.Digger) (string, err
 	}
 	// associate functions with aliases
 	funcMap := template.FuncMap{
-		"getString": attributes.GetString,
-		"getNumber": attributes.GetNumber,
-		"getBool":   attributes.GetBool,
+		"attr": attributes.Get,
 	}
 	// create a template, add the function map, and parse the text.
 	tmpl, err := template.New("templateTest").Funcs(funcMap).Parse(string(templateContent))

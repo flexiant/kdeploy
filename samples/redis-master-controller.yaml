@@ -1,8 +1,8 @@
-{{ $redis_master_replicas := getNumber "rc/redis-master/number" }}
-{{ $container_name        := getString "rc/redis-master/name" }}
-{{ $container_image       := getString "rc/redis-master/image" }}
-{{ $container_version     := getString "rc/redis-master/version" }}
-{{ $container_port        := getNumber "rc/redis-master/port" }}
+{{ $redis_master_replicas := attr "rc/redis-master/number" }}
+{{ $container_name        := attr "rc/redis-master/name" }}
+{{ $container_image       := attr "rc/redis-master/image" }}
+{{ $container_version     := attr "rc/redis-master/version" }}
+{{ $container_port        := attr "rc/redis-master/port" }}
 
 apiVersion: v1
 kind: ReplicationController
