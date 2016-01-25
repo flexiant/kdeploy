@@ -1,6 +1,11 @@
-package main
+package kubeclient
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/mafraba/kdeploy/config"
+	"github.com/mafraba/kdeploy/rest"
+)
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
@@ -9,26 +14,26 @@ type KubeClient interface {
 	CreateService(string, []byte) (string, error)
 }
 
-// KubeClientImpl implements KubeClient interface
-type KubeClientImpl struct {
-	service *restService
+// kubeClientImpl implements KubeClient interface
+type kubeClientImpl struct {
+	service *rest.RestService
 }
 
 // NewKubeClient builds a KubeClient object
 func NewKubeClient() (KubeClient, error) {
-	cfg, err := ReadConfig()
+	cfg, err := config.ReadConfig()
 	if err != nil {
 		return nil, err
 	}
-	rs, err := newRestService(*cfg)
+	rs, err := rest.NewRestService(*cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &KubeClientImpl{service: rs}, nil
+	return &kubeClientImpl{service: rs}, nil
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *KubeClientImpl) GetServices() (string, error) {
+func (k *kubeClientImpl) GetServices() (string, error) {
 	json, _, err := k.service.Get("/api/v1/services?pretty=true")
 	if err != nil {
 		return "", fmt.Errorf("error getting services: %s", err)
@@ -37,7 +42,7 @@ func (k *KubeClientImpl) GetServices() (string, error) {
 }
 
 // CreateReplicaController creates a replication controller as specified in the json doc received as argument
-func (k *KubeClientImpl) CreateReplicaController(namespace string, rcjson []byte) (string, error) {
+func (k *kubeClientImpl) CreateReplicaController(namespace string, rcjson []byte) (string, error) {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers", namespace)
 	json, status, err := k.service.Post(path, []byte(rcjson))
 	if err != nil {
@@ -50,7 +55,7 @@ func (k *KubeClientImpl) CreateReplicaController(namespace string, rcjson []byte
 }
 
 // CreateService creates a service as specified in the json doc received as argument
-func (k *KubeClientImpl) CreateService(namespace string, svcjson []byte) (string, error) {
+func (k *kubeClientImpl) CreateService(namespace string, svcjson []byte) (string, error) {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services", namespace)
 	json, status, err := k.service.Post(path, []byte(svcjson))
 	if err != nil {

@@ -1,4 +1,4 @@
-package main
+package metadata
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 	ymlutil "github.com/ghodss/yaml"
 	"github.com/mafraba/digger"
+	"github.com/mafraba/kdeploy/resolver"
 )
 
 // SingleAttributeMetadata holds metadata for a configuration attribute
@@ -106,7 +107,7 @@ func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
 func parseTemplates(path string, templates map[string]string, attributes digger.Digger) ([]string, error) {
 	var specs = []string{}
 	for _, templateFile := range templates {
-		specYaml, err := ResolveTemplate(fmt.Sprintf("%s/%s", path, templateFile), attributes)
+		specYaml, err := resolver.ResolveTemplate(fmt.Sprintf("%s/%s", path, templateFile), attributes)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving template %s: %v", templateFile, err)
 		}

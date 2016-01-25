@@ -4,23 +4,25 @@ import (
 	"fmt"
 
 	"github.com/mafraba/digger"
+	"github.com/mafraba/kdeploy/kubeclient"
+	"github.com/mafraba/kdeploy/metadata"
 )
 
 func main() {
-	metadata := ParseMetadata("./samples/")
-	defaults, err := metadata.AttributeDefaults()
+	md := metadata.ParseMetadata("./samples/")
+	defaults, err := md.AttributeDefaults()
 	if err != nil {
 		panic(err)
 	}
 	// build attributes merging "role list" to defaults
 	attributes := buildAttributes(defaults)
 	// get list of services and parse each one
-	servicesSpecs, err := metadata.ParseServices(attributes)
+	servicesSpecs, err := md.ParseServices(attributes)
 	if err != nil {
 		panic(err)
 	}
 	// get list of replica controllers and parse each one
-	controllersSpecs, err := metadata.ParseControllers(attributes)
+	controllersSpecs, err := md.ParseControllers(attributes)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +43,7 @@ func main() {
 }
 
 func getServices() {
-	kube, _ := NewKubeClient()
+	kube, _ := kubeclient.NewKubeClient()
 	services, _ := kube.GetServices()
 	fmt.Println("services: ")
 	fmt.Println(services)
@@ -79,7 +81,7 @@ func buildAttributes(defaults digger.Digger) digger.Digger {
 }
 
 func createServices(svcSpecs []string) error {
-	kube, err := NewKubeClient()
+	kube, err := kubeclient.NewKubeClient()
 	if err != nil {
 		return fmt.Errorf("error creating kube client: %v", err)
 	}
@@ -93,7 +95,7 @@ func createServices(svcSpecs []string) error {
 }
 
 func createControllers(rcSpecs []string) error {
-	kube, err := NewKubeClient()
+	kube, err := kubeclient.NewKubeClient()
 	if err != nil {
 		return fmt.Errorf("error creating kube client: %v", err)
 	}
