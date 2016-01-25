@@ -9,9 +9,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/digger"
-	"github.com/flexiant/kdeploy/kubeclient"
-	"github.com/flexiant/kdeploy/metadata"
+
+	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
+	"github.com/flexiant/kdeploy/webservice"
 )
 
 func cmdNotFound(c *cli.Context, command string) {
@@ -119,7 +120,7 @@ func main() {
 
 func cmdDeploy(c *cli.Context) {
 
-	md := metadata.ParseMetadata(c.String("kubeware"))
+	md := template.ParseMetadata(c.String("kubeware"))
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
@@ -143,7 +144,7 @@ func cmdDeploy(c *cli.Context) {
 }
 
 func getServices() {
-	kube, _ := kubeclient.NewKubeClient()
+	kube, _ := webservice.NewKubeClient()
 	services, _ := kube.GetServices()
 	fmt.Println("services: ")
 	fmt.Println(services)
@@ -166,7 +167,7 @@ func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
 }
 
 func createServices(svcSpecs []string) error {
-	kube, err := kubeclient.NewKubeClient()
+	kube, err := webservice.NewKubeClient()
 	if err != nil {
 		return fmt.Errorf("error creating kube client: %v", err)
 	}
@@ -180,7 +181,7 @@ func createServices(svcSpecs []string) error {
 }
 
 func createControllers(rcSpecs []string) error {
-	kube, err := kubeclient.NewKubeClient()
+	kube, err := webservice.NewKubeClient()
 	if err != nil {
 		return fmt.Errorf("error creating kube client: %v", err)
 	}

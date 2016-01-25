@@ -1,4 +1,4 @@
-package rest
+package webservice
 
 import (
 	"bytes"

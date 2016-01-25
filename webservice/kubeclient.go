@@ -1,10 +1,9 @@
-package kubeclient
+package webservice
 
 import (
 	"fmt"
 
 	"github.com/flexiant/kdeploy/config"
-	"github.com/flexiant/kdeploy/rest"
 )
 
 // KubeClient interface for a custom Kubernetes API client
@@ -16,7 +15,7 @@ type KubeClient interface {
 
 // kubeClientImpl implements KubeClient interface
 type kubeClientImpl struct {
-	service *rest.RestService
+	service *RestService
 }
 
 // NewKubeClient builds a KubeClient object
@@ -25,7 +24,7 @@ func NewKubeClient() (KubeClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	rs, err := rest.NewRestService(*cfg)
+	rs, err := NewRestService(*cfg)
 	if err != nil {
 		return nil, err
 	}
