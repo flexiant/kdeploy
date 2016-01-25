@@ -2,20 +2,130 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
+	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/kubeclient"
 	"github.com/flexiant/kdeploy/metadata"
+	"github.com/flexiant/kdeploy/utils"
 )
 
+func cmdNotFound(c *cli.Context, command string) {
+	log.Fatalf(
+		"%s: '%s' is not a %s command. See '%s --help'.",
+		c.App.Name,
+		command,
+		c.App.Name,
+		c.App.Name,
+	)
+}
+func prepareFlags(c *cli.Context) error {
+
+	if c.Bool("debug") {
+		os.Setenv("DEBUG", "1")
+		log.SetOutput(os.Stderr)
+		log.SetLevel(log.DebugLevel)
+	}
+	err := utils.InitializeConfig(c)
+	if err != nil {
+		log.Errorf("Error reading Kdeploy configuration: %s", err)
+		return err
+	}
+
+	return nil
+}
+
 func main() {
-	md := metadata.ParseMetadata("./samples/")
+
+	app := cli.NewApp()
+	app.Name = "kdeploy"
+	app.Author = "Concerto Contributors"
+	app.Email = "https://github.com/flexiant/kdeploy"
+
+	app.Usage = "Deploys Kubeware in kubernetes clusters"
+	app.Version = utils.VERSION
+	app.CommandNotFound = cmdNotFound
+	app.Before = prepareFlags
+
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "debug, D",
+			Usage: "Enable debug mode",
+		},
+
+		cli.StringFlag{
+			EnvVar: "KUBERNETES_CA_CERT",
+			Name:   "ca-cert",
+			Usage:  "CA to verify remote connections",
+		},
+		cli.StringFlag{
+			EnvVar: "KUBERNETES_CLIENT_CERT",
+			Name:   "client-cert",
+			Usage:  "Client cert to use for Kubernetes",
+		},
+		cli.StringFlag{
+			EnvVar: "KUBERNETES_CLIENT_KEY",
+			Name:   "client-key",
+			Usage:  "Private key used in client Kubernetes auth",
+		},
+		cli.StringFlag{
+			EnvVar: "KUBERNETES_ENDPOINT",
+			Name:   "kubernetes-endpoint",
+			Usage:  "Kubernetes Endpoint",
+		},
+		cli.StringFlag{
+			EnvVar: "KDEPLOY_CONFIG",
+			Name:   "kdeploy-config",
+			Usage:  "Kdeploy Config File",
+		},
+	}
+	kubewareDefaulPath, _ := filepath.Abs("./examples/guestbook/")
+	app.Commands = []cli.Command{
+		{
+			Name:   "deploy",
+			Usage:  "Deploys a Kubeware",
+			Action: cmdDeploy,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:   "attribute, a",
+					Usage:  "Attribute List",
+					Value:  "./examples/attributes.json",
+					EnvVar: "KDEPLOY_ATTRIBUTE",
+				},
+				cli.StringFlag{
+					Name:   "kubeware, k",
+					Usage:  "Kubeware path",
+					Value:  kubewareDefaulPath,
+					EnvVar: "KDEPLOY_KUBEWARE",
+				},
+			},
+		},
+		{
+			Name:  "destroy",
+			Usage: "Destroys a Kubeware",
+		},
+		{
+			Name:  "list",
+			Usage: "List's Kubewares deployed",
+		},
+	}
+
+	app.Run(os.Args)
+}
+
+func cmdDeploy(c *cli.Context) {
+
+	md := metadata.ParseMetadata(c.String("kubeware"))
 	defaults, err := md.AttributeDefaults()
 	if err != nil {
 		panic(err)
 	}
 	// build attributes merging "role list" to defaults
-	attributes := buildAttributes(defaults)
+	attributes := buildAttributes(c.String("attribute"), defaults)
 	// get list of services and parse each one
 	servicesSpecs, err := md.ParseServices(attributes)
 	if err != nil {
@@ -49,22 +159,11 @@ func getServices() {
 	fmt.Println(services)
 }
 
-func buildAttributes(defaults digger.Digger) digger.Digger {
-	roleList := `
-	{
-		"rc" : {
-			"frontend" : {
-				"number" : 3,
-				"container": {
-					"name": "contname",
-					"image": "somerepo/someimage",
-					"version": "latest",
-					"port": 8080
-				}
-			}
-		}
+func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
+	roleList, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		panic(err)
 	}
-	`
 	roleListDigger, err := digger.NewJSONDigger([]byte(roleList))
 	if err != nil {
 		panic(err)

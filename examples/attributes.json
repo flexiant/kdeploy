@@ -1,0 +1,13 @@
+{  
+   "rc":{  
+      "frontend":{  
+         "number":6,
+         "container":{  
+            "name":"contname",
+            "image":"somerepo/someimage",
+            "version":"latest",
+            "port":8080
+         }
+      }
+   }
+}
