@@ -3,8 +3,8 @@ package kubeclient
 import (
 	"fmt"
 
-	"github.com/mafraba/kdeploy/config"
-	"github.com/mafraba/kdeploy/rest"
+	"github.com/flexiant/kdeploy/config"
+	"github.com/flexiant/kdeploy/rest"
 )
 
 // KubeClient interface for a custom Kubernetes API client

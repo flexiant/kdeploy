@@ -8,9 +8,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/flexiant/digger"
+	"github.com/flexiant/kdeploy/resolver"
 	ymlutil "github.com/ghodss/yaml"
-	"github.com/mafraba/digger"
-	"github.com/mafraba/kdeploy/resolver"
 )
 
 // SingleAttributeMetadata holds metadata for a configuration attribute

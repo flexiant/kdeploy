@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/mafraba/digger"
+	"github.com/flexiant/digger"
 )
 
 func ResolveTemplate(templatePath string, attributes digger.Digger) (string, error) {

@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/mafraba/digger"
-	"github.com/mafraba/kdeploy/kubeclient"
-	"github.com/mafraba/kdeploy/metadata"
+	"github.com/flexiant/digger"
+	"github.com/flexiant/kdeploy/kubeclient"
+	"github.com/flexiant/kdeploy/metadata"
 )
 
 func main() {

@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mafraba/kdeploy/config"
+	"github.com/flexiant/kdeploy/config"
 )
 
 type RestService struct {
