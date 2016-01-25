@@ -37,6 +37,7 @@ type Metadata struct {
 	path                   string
 }
 
+// ParseMetadata parses the metadata file in the kube dir
 func ParseMetadata(path string) Metadata {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -57,6 +58,36 @@ func ParseMetadata(path string) Metadata {
 	}
 	metadata.path = filepath.Dir(metadataFile)
 	return metadata
+}
+
+// RequiredAttributes returns default values for attributes
+func (m Metadata) RequiredAttributes() ([]string, error) {
+	var reqs = []string{}
+	for resourceType, resources := range m.Attributes {
+		for resourceName, attributes := range resources {
+			for attributeName, attrMetadata := range attributes {
+				if attrMetadata.Required {
+					reqs = append(reqs, fmt.Sprintf("%s/%s/%s", resourceType, resourceName, attributeName))
+				}
+			}
+		}
+	}
+	return reqs, nil
+}
+
+// CheckRequiredAttributes returns an error if some required attribute is missing
+func (m Metadata) CheckRequiredAttributes(attributes digger.Digger) error {
+	reqs, err := m.RequiredAttributes()
+	if err != nil {
+		return fmt.Errorf("could not calculate required attributes: %v", err)
+	}
+	for _, att := range reqs {
+		_, err := attributes.Get(att)
+		if err != nil {
+			return fmt.Errorf("required attribute not present: '%s'", att)
+		}
+	}
+	return nil
 }
 
 // AttributeDefaults returns default values for attributes
@@ -96,11 +127,21 @@ func defaultsMapFromMetadata(md AttributesMetadata) (interface{}, error) {
 	return defaults, nil
 }
 
+// ParseServices parses the service templates in the kube and returns their JSON representations
 func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
+	err := m.CheckRequiredAttributes(attributes)
+	if err != nil {
+		return nil, err
+	}
 	return parseTemplates(m.path, m.Services, attributes)
 }
 
+// ParseControllers parses the replication controllers in the kube and returns their JSON representations
 func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
+	err := m.CheckRequiredAttributes(attributes)
+	if err != nil {
+		return nil, err
+	}
 	return parseTemplates(m.path, m.ReplicationControllers, attributes)
 }
 
