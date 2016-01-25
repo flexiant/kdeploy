@@ -1,8 +1,10 @@
 package rest
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -58,9 +60,15 @@ func httpClient(config config.Config) (*http.Client, error) {
 	return client, nil
 }
 
+func prettyprint(b []byte) []byte {
+	var out bytes.Buffer
+	json.Indent(&out, b, "", "  ")
+	return out.Bytes()
+}
+
 func (r *RestService) Post(path string, json []byte) ([]byte, int, error) {
 	output := strings.NewReader(string(json))
-	log.Printf("debug: post request path: %s , body: %s", r.endpoint+path, string(json))
+	log.Printf("debug: post request path: %s , body: \n%s\n", r.endpoint+path, string(prettyprint(json)))
 	response, err := r.client.Post(r.endpoint+path, "application/json", output)
 	if err != nil {
 		return nil, -1, fmt.Errorf("error on http request (POST %v): %v", r.endpoint+path, err)
