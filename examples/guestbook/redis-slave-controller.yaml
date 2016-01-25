@@ -1,8 +1,8 @@
-{{ $number_of_replicas    := getNumber "rc/redis-slave/number" }}
-{{ $container_name        := getString "rc/redis-slave/name" }}
-{{ $container_image       := getString "rc/redis-slave/image" }}
-{{ $container_version     := getString "rc/redis-slave/version" }}
-{{ $container_port        := getNumber "rc/redis-slave/port" }}
+{{ $number_of_replicas    := attr "rc/redis-slave/number" }}
+{{ $container_name        := attr "rc/redis-slave/name" }}
+{{ $container_image       := attr "rc/redis-slave/image" }}
+{{ $container_version     := attr "rc/redis-slave/version" }}
+{{ $container_port        := attr "rc/redis-slave/port" }}
 
 apiVersion: v1
 kind: ReplicationController

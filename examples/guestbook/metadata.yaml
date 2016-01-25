@@ -32,7 +32,7 @@ attributes:
         required: true
     redis-slave:
       port:
-        description: "Defines expose port for the redis master service"
+        description: "Defines expose port for the redis slave service"
         default: 6379
         required: true
   rc:

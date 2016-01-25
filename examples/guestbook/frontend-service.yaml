@@ -1,5 +1,5 @@
-{{ $frontend_balancer  := getString "svc/frontend/balancer" }}
-{{ $frontend_port      := getNumber "svc/frontend/port" }}
+{{ $frontend_balancer  := attr "svc/frontend/balancer" }}
+{{ $frontend_port      := attr "svc/frontend/port" }}
 
 apiVersion: v1
 kind: Service

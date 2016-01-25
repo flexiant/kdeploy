@@ -23,7 +23,6 @@ svc:
   redis-slave: "redis-slave-service.yaml"
   frontend: "frontend-controller.yaml"
 
-
 attributes:
   svc:
     frontend:
@@ -33,7 +32,7 @@ attributes:
         required: true
       port:
         description: "Defines expose port for the Frontend Service"
-        default: 80
+        # default: 80
         required: true
   rc:
     frontend:
@@ -74,5 +73,21 @@ func TestAttributeDefaults(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	} else if val != "php-redis" {
 		t.Errorf("unexpected value: %v", val)
+	}
+}
+
+func TestCheckRequiredAttributes(t *testing.T) {
+	var metadata Metadata
+	err := yaml.Unmarshal([]byte(metadataSample), &metadata)
+	if err != nil {
+		t.Fatalf("error parsing metadata: %v", err)
+	}
+	defaults, err := metadata.AttributeDefaults()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	err = metadata.CheckRequiredAttributes(defaults)
+	if err == nil {
+		t.Fatalf("should have detected missing required attribute: %s", "svc/frontend/port")
 	}
 }
