@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/flexiant/digger"
+	"github.com/flexiant/kdeploy/utils"
 )
 
 // ResolveTemplate resolves a template according to the attributes passed
@@ -32,8 +33,7 @@ func ResolveTemplate(templatePath string, attributes digger.Digger) (string, err
 	// execute the template
 	var doc bytes.Buffer
 	err = tmpl.Execute(&doc, nil)
-	if err != nil {
-		panic("error executing template: " + err.Error())
-	}
+	utils.CheckError(err)
+
 	return doc.String(), nil
 }

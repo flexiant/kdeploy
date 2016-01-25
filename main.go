@@ -121,35 +121,25 @@ func cmdDeploy(c *cli.Context) {
 
 	md := metadata.ParseMetadata(c.String("kubeware"))
 	defaults, err := md.AttributeDefaults()
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
 	attributes := buildAttributes(c.String("attribute"), defaults)
 	// get list of services and parse each one
 	servicesSpecs, err := md.ParseServices(attributes)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	// get list of replica controllers and parse each one
 	controllersSpecs, err := md.ParseControllers(attributes)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 
 	// get services just to check API availability
 	// getServices()
 
 	// create each of the services
 	err = createServices(servicesSpecs)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 	// create each of the controllers
 	err = createControllers(controllersSpecs)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 }
 
 func getServices() {
@@ -161,20 +151,16 @@ func getServices() {
 
 func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
 	roleList, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	roleListDigger, err := digger.NewJSONDigger([]byte(roleList))
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	attributes, err := digger.NewMultiDigger(
 		roleListDigger,
 		defaults,
 	)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
 
 	return attributes
 }

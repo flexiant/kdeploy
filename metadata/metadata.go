@@ -10,6 +10,7 @@ import (
 
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/resolver"
+	"github.com/flexiant/kdeploy/utils"
 	ymlutil "github.com/ghodss/yaml"
 )
 
@@ -40,22 +41,18 @@ type Metadata struct {
 // ParseMetadata parses the metadata file in the kube dir
 func ParseMetadata(path string) Metadata {
 	absPath, err := filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	metadataFile := fmt.Sprintf("%s/metadata.yaml", filepath.Clean(absPath))
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	metadataContent, err := ioutil.ReadFile(metadataFile)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	var metadata Metadata
 	err = yaml.Unmarshal(metadataContent, &metadata)
-	if err != nil {
-		panic(err)
-	}
+	utils.CheckError(err)
+
 	metadata.path = filepath.Dir(metadataFile)
 	return metadata
 }
