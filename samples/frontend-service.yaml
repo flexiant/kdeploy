@@ -1,3 +1,6 @@
+{{ $frontend_balancer  := getString "svc/frontend/balancer" }}
+{{ $frontend_port      := getNumber "svc/frontend/port" }}
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,9 +10,9 @@ metadata:
 spec:
   # if your cluster supports it, uncomment the following to automatically create
   # an external load-balanced IP for the frontend service.
-  type: {{.GetC "frontend/svc/balancer" }}
+  type: {{ $frontend_balancer }}
   ports:
     # the port that this service should serve on
-    - port: {{.GetC "frontend/svc/port" }}
+    - port: {{ $frontend_port }}
   selector:
     name: frontend

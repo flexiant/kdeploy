@@ -1,3 +1,9 @@
+{{ $redis_master_replicas := getNumber "rc/redis-master/number" }}
+{{ $container_name        := getString "rc/redis-master/name" }}
+{{ $container_image       := getString "rc/redis-master/image" }}
+{{ $container_version     := getString "rc/redis-master/version" }}
+{{ $container_port        := getNumber "rc/redis-master/port" }}
+
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -5,7 +11,7 @@ metadata:
   labels:
     name: redis-master
 spec:
-  replicas: {{.Get "redis-master/rc/number" }}
+  replicas: {{ $redis_master_replicas }}
   selector:
     name: redis-master
   template:
@@ -14,7 +20,7 @@ spec:
         name: redis-master
     spec:
       containers:
-      - name: {{.Get "redis-master/rc/container/name" }}
-        image: {{.Get "redis-master/rc/container/image" }}:{{.Get "redis-master/rc/container/version" }}
+      - name: {{ $container_name }}
+        image: {{ $container_image }}:{{ $container_version }}
         ports:
-        - containerPort: {{.Get "redis-master/rc/container/port" }}
+        - containerPort: {{ $container_port }}

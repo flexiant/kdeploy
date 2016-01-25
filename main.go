@@ -1,26 +1,53 @@
 package main
 
 import (
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"text/template"
+	"fmt"
 
 	"github.com/mafraba/digger"
-	"gopkg.in/yaml.v2"
 )
 
 func main() {
-	// tempDir, _ := filepath.Abs("./tmp")
-	// os.Mkdir(tempDir, 0666)
-
-	metadata := parseMetadata()
+	metadata := ParseMetadata("./samples/")
 	defaults, err := metadata.AttributeDefaults()
 	if err != nil {
 		panic(err)
 	}
+	// build attributes merging "role list" to defaults
+	attributes := buildAttributes(defaults)
+	// get list of services and parse each one
+	servicesSpecs, err := metadata.ParseServices(attributes)
+	if err != nil {
+		panic(err)
+	}
+	// get list of replica controllers and parse each one
+	controllersSpecs, err := metadata.ParseControllers(attributes)
+	if err != nil {
+		panic(err)
+	}
 
+	// get services just to check API availability
+	// getServices()
+
+	// create each of the services
+	err = createServices(servicesSpecs)
+	if err != nil {
+		panic(err)
+	}
+	// create each of the controllers
+	err = createControllers(controllersSpecs)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getServices() {
+	kube, _ := NewKubeClient()
+	services, _ := kube.GetServices()
+	fmt.Println("services: ")
+	fmt.Println(services)
+}
+
+func buildAttributes(defaults digger.Digger) digger.Digger {
 	roleList := `
 	{
 		"rc" : {
@@ -40,52 +67,41 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	attributes, _ := digger.NewMultiDigger(
+	attributes, err := digger.NewMultiDigger(
 		roleListDigger,
 		defaults,
 	)
-
-	tmpl := parseTemplate("./samples/frontend-controller.yaml", attributes)
-
-	// Run the template to verify the output.
-	err = tmpl.Execute(os.Stdout, nil)
 	if err != nil {
-		log.Fatalf("error executing template: %s", err)
+		panic(err)
 	}
 
+	return attributes
 }
 
-func parseTemplate(templatePath string, attributes digger.Digger) *template.Template {
-	templateFile, _ := filepath.Abs(templatePath)
-	templateContent, err := ioutil.ReadFile(templateFile)
+func createServices(svcSpecs []string) error {
+	kube, err := NewKubeClient()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error creating kube client: %v", err)
 	}
-	// First we create a FuncMap with which to register the function.
-	funcMap := template.FuncMap{
-		// Associating functions with aliases
-		"getString": attributes.GetString,
-		"getNumber": attributes.GetNumber,
-		"getBool":   attributes.GetBool,
+	for _, spec := range svcSpecs {
+		_, err = kube.CreateService("default", []byte(spec))
+		if err != nil {
+			return fmt.Errorf("error creating services: %v", err)
+		}
 	}
-	// Create a template, add the function map, and parse the text.
-	tmpl, err := template.New("templateTest").Funcs(funcMap).Parse(string(templateContent))
-	if err != nil {
-		log.Fatalf("error parsing: %s", err)
-	}
-	return tmpl
+	return nil
 }
 
-func parseMetadata() Metadata {
-	metadataFile, _ := filepath.Abs("./samples/metadata.yaml")
-	metadataContent, err := ioutil.ReadFile(metadataFile)
+func createControllers(rcSpecs []string) error {
+	kube, err := NewKubeClient()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error creating kube client: %v", err)
 	}
-	var metadata Metadata
-	err = yaml.Unmarshal(metadataContent, &metadata)
-	if err != nil {
-		panic(err)
+	for _, spec := range rcSpecs {
+		_, err = kube.CreateReplicaController("default", []byte(spec))
+		if err != nil {
+			return fmt.Errorf("error creating replication controllers: %v", err)
+		}
 	}
-	return metadata
+	return nil
 }

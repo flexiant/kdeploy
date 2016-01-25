@@ -4,18 +4,17 @@ email: "contact@flexiant.com"
 description: "Installs/Configures Guestbook Example"
 version: "0.10.4"
 
-rc:
-  # redis-master: "redis-master-controller.yaml"
-  # redis-slave: "redis-slave-controller.yaml"
-  frontend: "frontend-service.yaml"
-
-svc:
-  redis-master: "redis-master-service.yaml"
-  redis-slave: "redis-slave-service.yaml"
+replicationcontrollers:
+  redis-master: "redis-master-controller.yaml"
+  redis-slave: "redis-slave-controller.yaml"
   frontend: "frontend-controller.yaml"
 
+services:
+  redis-master: "redis-master-service.yaml"
+  redis-slave: "redis-slave-service.yaml"
+  frontend: "frontend-service.yaml"
 
-attributes:       	   
+attributes:
   svc:
     frontend:
       balancer:
@@ -25,12 +24,22 @@ attributes:
       port:
         description: "Defines expose port for the Frontend Service"
         default: 80
-        required: true 
+        required: true
+    redis-master:
+      port:
+        description: "Defines expose port for the redis master service"
+        default: 6379
+        required: true
+    redis-slave:
+      port:
+        description: "Defines expose port for the redis master service"
+        default: 6379
+        required: true
   rc:
     frontend:
       number:
-        default: 6
-        required: true    
+        default: 3
+        required: true
       name:
         default: "php-redis"
         required: true
@@ -39,4 +48,39 @@ attributes:
         required: true
       version:
         default: "v2"
+        required: true
+      port:
+        default: 80
+        required: true
+    redis-master:
+      number:
+        default: 1
+        required: true
+      name:
+        default: "redis-master"
+        required: true
+      image:
+        default: "redis"
+        required: true
+      version:
+        default: "latest"
+        required: true
+      port:
+        default: 6379
+        required: true
+    redis-slave:
+      number:
+        default: 1
+        required: true
+      name:
+        default: "redis-slave"
+        required: true
+      image:
+        default: "kubernetes/redis-slave"
+        required: true
+      version:
+        default: "v2"
+        required: true
+      port:
+        default: 6379
         required: true

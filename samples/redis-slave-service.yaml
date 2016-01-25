@@ -1,3 +1,5 @@
+{{ $port := getNumber "svc/redis-slave/port" }}
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,6 +9,6 @@ metadata:
 spec:
   ports:
     # the port that this service should serve on
-  - port: 6379
+  - port: {{ $port }} # 6379
   selector:
     name: redis-slave

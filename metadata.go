@@ -2,7 +2,13 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"path/filepath"
 
+	"gopkg.in/yaml.v2"
+
+	ymlutil "github.com/ghodss/yaml"
 	"github.com/mafraba/digger"
 )
 
@@ -19,14 +25,37 @@ type AttributesMetadata map[string]map[string]map[string]SingleAttributeMetadata
 
 // Metadata holds generic info about the deployment's resources and attributes
 type Metadata struct {
-	Name        string
-	Maintainer  string
-	Email       string
-	Description string
-	Version     string
-	Attributes  AttributesMetadata
-	Rc          map[string]string
-	Svc         map[string]string
+	Name                   string
+	Maintainer             string
+	Email                  string
+	Description            string
+	Version                string
+	Attributes             AttributesMetadata
+	ReplicationControllers map[string]string
+	Services               map[string]string
+	path                   string
+}
+
+func ParseMetadata(path string) Metadata {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		panic(err)
+	}
+	metadataFile := fmt.Sprintf("%s/metadata.yaml", filepath.Clean(absPath))
+	if err != nil {
+		panic(err)
+	}
+	metadataContent, err := ioutil.ReadFile(metadataFile)
+	if err != nil {
+		panic(err)
+	}
+	var metadata Metadata
+	err = yaml.Unmarshal(metadataContent, &metadata)
+	if err != nil {
+		panic(err)
+	}
+	metadata.path = filepath.Dir(metadataFile)
+	return metadata
 }
 
 // AttributeDefaults returns default values for attributes
@@ -64,4 +93,29 @@ func defaultsMapFromMetadata(md AttributesMetadata) (interface{}, error) {
 	}
 
 	return defaults, nil
+}
+
+func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
+	return parseTemplates(m.path, m.Services, attributes)
+}
+
+func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
+	return parseTemplates(m.path, m.ReplicationControllers, attributes)
+}
+
+func parseTemplates(path string, templates map[string]string, attributes digger.Digger) ([]string, error) {
+	var specs = []string{}
+	for _, templateFile := range templates {
+		specYaml, err := ResolveTemplate(fmt.Sprintf("%s/%s", path, templateFile), attributes)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving template %s: %v", templateFile, err)
+		}
+		specJSON, err := ymlutil.YAMLToJSON([]byte(specYaml))
+		if err != nil {
+			log.Printf("yaml:\n%s", specYaml)
+			return nil, fmt.Errorf("error converting template %s: %v", templateFile, err)
+		}
+		specs = append(specs, string(specJSON))
+	}
+	return specs, nil
 }

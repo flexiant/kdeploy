@@ -1,8 +1,8 @@
 {{ $frontend_replicas  := getNumber "rc/frontend/number" }}
-{{ $container_name     := getString "rc/frontend/container/name" }}
-{{ $container_image    := getString "rc/frontend/container/image" }}
-{{ $container_version  := getString "rc/frontend/container/version" }}
-{{ $container_port     := getNumber "rc/frontend/container/port" }}
+{{ $container_name     := getString "rc/frontend/name" }}
+{{ $container_image    := getString "rc/frontend/image" }}
+{{ $container_version  := getString "rc/frontend/version" }}
+{{ $container_port     := getNumber "rc/frontend/port" }}
 
 apiVersion: v1
 kind: ReplicationController
