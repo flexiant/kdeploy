@@ -84,6 +84,7 @@ func main() {
 		{
 			Name:   "deploy",
 			Usage:  "Deploys a Kubeware",
+			Before: deploy.PrepareFlags,
 			Action: deploy.CmdDeploy,
 			Flags:  deploy.Flags(),
 		},

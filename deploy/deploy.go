@@ -1,10 +1,11 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -16,7 +17,6 @@ import (
 )
 
 func Flags() []cli.Flag {
-	kubewareDefaulPath, _ := filepath.Abs("./examples/guestbook/")
 	return []cli.Flag{
 		cli.StringFlag{
 			Name:   "attribute, a",
@@ -27,22 +27,39 @@ func Flags() []cli.Flag {
 		cli.StringFlag{
 			Name:   "kubeware, k",
 			Usage:  "Kubeware path",
-			Value:  kubewareDefaulPath,
+			Value:  "https://github.com/flexiant/kubeware-guestbook",
 			EnvVar: "KDEPLOY_KUBEWARE",
+		},
+		cli.BoolFlag{
+			Name:   "dry-run, d",
+			Usage:  "Dry Run of Deploy used for debuging options",
+			EnvVar: "KDEPLOY_DRYRUN",
 		},
 	}
 }
 
+func PrepareFlags(c *cli.Context) error {
+	if c.IsSet("attribute") {
+		os.Setenv("KDEPLOY_ATTRIBUTE", c.String("attribute"))
+	}
+
+	if c.IsSet("kubeware") {
+		os.Setenv("KDEPLOY_KUBEWARE", c.String("kubeware"))
+	}
+
+	if c.Bool("dry-run") {
+		os.Setenv("KDEPLOY_DRYRUN", "1")
+	}
+
+	return nil
+}
+
 func CmdDeploy(c *cli.Context) {
-
-	kubewarePath := c.String("kubeware")
-
 	// Validate if Kubeware is an url or not
 	kubewareUrl, _ := url.Parse(c.String("kubeware"))
 
 	if kubewareUrl != nil {
 		if kubewareUrl.Host == "github.com" {
-			log.Debugf("Going to download kubeware from %s", kubewareUrl.String())
 			path := strings.Split(kubewareUrl.Path, "/")
 			kubewareName := path[2]
 			newPath := []string{""}
@@ -62,16 +79,16 @@ func CmdDeploy(c *cli.Context) {
 			err = utils.Unzip(zipFileLocation, tmpDir)
 			utils.CheckError(err)
 
-			kubewarePath = fmt.Sprintf("%s/%s-master/", tmpDir, kubewareName)
+			os.Setenv("KDEPLOY_KUBEWARE", fmt.Sprintf("%s/%s-master/", tmpDir, kubewareName))
 
 		} else {
-			panic("We currently only support Github urls")
+			utils.CheckError(errors.New("We currently only support Github urls"))
 		}
 	}
 
-	log.Debugf("Going to parse kubeware in %s", kubewarePath)
+	log.Debugf("Going to parse kubeware in %s", os.Getenv("KDEPLOY_KUBEWARE"))
 
-	md := template.ParseMetadata(kubewarePath)
+	md := template.ParseMetadata(os.Getenv("KDEPLOY_KUBEWARE"))
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults

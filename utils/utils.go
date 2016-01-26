@@ -18,16 +18,12 @@ func CheckError(err error) {
 
 func Unzip(src, dest string) error {
 	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
+	CheckError(err)
 	defer r.Close()
 
 	for _, f := range r.File {
 		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
+		CheckError(err)
 		defer rc.Close()
 
 		fpath := filepath.Join(dest, f.Name)
@@ -40,21 +36,13 @@ func Unzip(src, dest string) error {
 			}
 
 			err = os.MkdirAll(fdir, f.Mode())
-			if err != nil {
-				log.Fatal(err)
-				return err
-			}
-			f, err := os.OpenFile(
-				fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return err
-			}
+			CheckError(err)
+			f, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			CheckError(err)
 			defer f.Close()
 
 			_, err = io.Copy(f, rc)
-			if err != nil {
-				return err
-			}
+			CheckError(err)
 		}
 	}
 	return nil

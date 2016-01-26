@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -80,7 +82,14 @@ func prettyprint(b []byte) []byte {
 func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
 	r.endpoint.Path = urlPath
 	output := strings.NewReader(string(json))
-	log.Debugf("Post request url: %s , body: %s", r.endpoint.String(), string(prettyprint(json)))
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Post request url: %s , body:\n%s", r.endpoint.String(), string(prettyprint(json)))
+		return nil, 200, nil
+	} else {
+		log.Debugf("Post request url: %s , body:\n%s", r.endpoint.String(), string(prettyprint(json)))
+	}
+
 	response, err := r.client.Post(r.endpoint.String(), "application/json", output)
 	if err != nil {
 		return nil, -1, err
@@ -97,7 +106,14 @@ func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
 
 func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 	r.endpoint.Path = urlPath
-	log.Debugf("Delete request url: %s", r.endpoint.String())
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Delete request url: %s", r.endpoint.String())
+		return nil, 200, nil
+	} else {
+		log.Debugf("Delete request url: %s", r.endpoint.String())
+	}
+
 	request, err := http.NewRequest("DELETE", r.endpoint.String(), nil)
 	if err != nil {
 		return nil, -1, err
@@ -117,7 +133,15 @@ func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 }
 
 func (r *RestService) Get(urlPath string) ([]byte, int, error) {
-	log.Debugf("Get request url: %s", r.endpoint.String())
+	r.endpoint.Path = urlPath
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Get request url: %s", r.endpoint.String())
+		return nil, 200, nil
+	} else {
+		log.Debugf("Get request url: %s", r.endpoint.String())
+	}
+
 	response, err := r.client.Get(r.endpoint.String())
 	if err != nil {
 		return nil, -1, err
@@ -133,10 +157,21 @@ func (r *RestService) Get(urlPath string) ([]byte, int, error) {
 }
 
 func (r *RestService) GetFile(urlPath string, directory string) (string, error) {
-	log.Debugf("Get file request url: %s destination: %s", r.endpoint.String(), directory)
+	r.endpoint.Path = urlPath
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Get file request url: %s destination: %s", r.endpoint.String(), directory)
+	} else {
+		log.Debugf("Get file request url: %s destination: %s", r.endpoint.String(), directory)
+	}
+
 	response, err := r.client.Get(r.endpoint.String())
 	if err != nil {
 		return "", err
+	}
+
+	if response.StatusCode >= 300 {
+		return "", errors.New(fmt.Sprintf("Obtained %d response code for downloading file", response.StatusCode))
 	}
 
 	slice := strings.Split(urlPath, "/")
