@@ -1,16 +1,15 @@
 package template
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/utils"
-	ymlutil "github.com/ghodss/yaml"
 )
 
 // SingleAttributeMetadata holds metadata for a configuration attribute
@@ -129,7 +128,7 @@ func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseTemplates(m.path, m.Services, attributes)
+	return m.parseTemplates(m.Services, attributes)
 }
 
 // ParseControllers parses the replication controllers in the kube and returns their JSON representations
@@ -138,22 +137,88 @@ func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseTemplates(m.path, m.ReplicationControllers, attributes)
+	return m.parseTemplates(m.ReplicationControllers, attributes)
 }
 
-func parseTemplates(path string, templates map[string]string, attributes digger.Digger) ([]string, error) {
+func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) ([]string, error) {
 	var specs = []string{}
 	for _, templateFile := range templates {
-		specYaml, err := ResolveTemplate(fmt.Sprintf("%s/%s", path, templateFile), attributes)
+		specMap, err := parseTemplate(fmt.Sprintf("%s/%s", m.path, templateFile), attributes)
 		if err != nil {
-			return nil, fmt.Errorf("error resolving template %s: %v", templateFile, err)
+			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
 		}
-		specJSON, err := ymlutil.YAMLToJSON([]byte(specYaml))
+		err = addKubewareLabel(m.Name, specMap)
 		if err != nil {
-			log.Printf("yaml:\n%s", specYaml)
-			return nil, fmt.Errorf("error converting template %s: %v", templateFile, err)
+			return nil, fmt.Errorf("error adding kubeware labels to %s: %v", templateFile, err)
+		}
+		specJSON, err := json.Marshal(specMap)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling into json (%s): %v", templateFile, err)
 		}
 		specs = append(specs, string(specJSON))
 	}
 	return specs, nil
+}
+
+func parseTemplate(templateFile string, attributes digger.Digger) (map[string]interface{}, error) {
+	specYaml, err := ResolveTemplate(templateFile, attributes)
+	if err != nil {
+		return nil, fmt.Errorf("error resolving template %s: %v", templateFile, err)
+	}
+	var specMap map[interface{}]interface{}
+	err = yaml.Unmarshal([]byte(specYaml), &specMap)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing yaml for %s: %v", templateFile, err)
+	}
+	normalizedMap, err := normalizeValue(specMap)
+	return normalizedMap.(map[string]interface{}), nil
+}
+
+func addKubewareLabel(name string, specmap map[string]interface{}) error {
+	metadata := specmap["metadata"].(map[string]interface{})
+	labels := metadata["labels"].(map[string]interface{})
+	labels["kubeware"] = name
+	return nil
+}
+
+func normalizeValue(value interface{}) (interface{}, error) {
+	switch value := value.(type) {
+	case map[interface{}]interface{}:
+		node := make(map[string]interface{}, len(value))
+		for k, v := range value {
+			key, ok := k.(string)
+			if !ok {
+				return nil, fmt.Errorf("Unsupported map key: %#v", k)
+			}
+			item, err := normalizeValue(v)
+			if err != nil {
+				return nil, fmt.Errorf("Unsupported map value: %#v", v)
+			}
+			node[key] = item
+		}
+		return node, nil
+	case map[string]interface{}:
+		node := make(map[string]interface{}, len(value))
+		for key, v := range value {
+			item, err := normalizeValue(v)
+			if err != nil {
+				return nil, fmt.Errorf("Unsupported map value: %#v", v)
+			}
+			node[key] = item
+		}
+		return node, nil
+	case []interface{}:
+		node := make([]interface{}, len(value))
+		for key, v := range value {
+			item, err := normalizeValue(v)
+			if err != nil {
+				return nil, fmt.Errorf("Unsupported list item: %#v", v)
+			}
+			node[key] = item
+		}
+		return node, nil
+	case bool, float64, int, string:
+		return value, nil
+	}
+	return nil, fmt.Errorf("Unsupported type: %T", value)
 }
