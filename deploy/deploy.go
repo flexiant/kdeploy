@@ -137,7 +137,7 @@ func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
 func createServices(svcSpecs []string) error {
 	kube, err := webservice.NewKubeClient()
 	if err != nil {
-		return fmt.Errorf("error creating kube client: %v", err)
+		return err
 	}
 	for _, spec := range svcSpecs {
 		_, err = kube.CreateService("default", []byte(spec))

@@ -5,7 +5,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-
 	"github.com/flexiant/kdeploy/deploy"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -26,16 +25,15 @@ func prepareFlags(c *cli.Context) error {
 		log.SetOutput(os.Stderr)
 		log.SetLevel(log.DebugLevel)
 	}
-	err := utils.InitializeConfig(c)
-	if err != nil {
-		log.Errorf("Error reading Kdeploy configuration: %s", err)
-		return err
-	}
+
+	utils.InitializeConfig(c)
 
 	return nil
 }
 
 func main() {
+
+	config, _ := utils.ReadConfig()
 
 	app := cli.NewApp()
 	app.Name = "kdeploy"
@@ -56,26 +54,31 @@ func main() {
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_CA_CERT",
 			Name:   "ca-cert",
+			Value:  config.Connection.CACert,
 			Usage:  "CA to verify remote connections",
 		},
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_CLIENT_CERT",
 			Name:   "client-cert",
+			Value:  config.Connection.Cert,
 			Usage:  "Client cert to use for Kubernetes",
 		},
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_CLIENT_KEY",
 			Name:   "client-key",
+			Value:  config.Connection.Key,
 			Usage:  "Private key used in client Kubernetes auth",
 		},
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_ENDPOINT",
 			Name:   "kubernetes-endpoint",
+			Value:  config.Connection.APIEndpoint,
 			Usage:  "Kubernetes Endpoint",
 		},
 		cli.StringFlag{
 			EnvVar: "KDEPLOY_CONFIG",
 			Name:   "kdeploy-config",
+			Value:  config.Path,
 			Usage:  "Kdeploy Config File",
 		},
 	}

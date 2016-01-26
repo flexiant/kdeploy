@@ -3,7 +3,7 @@ package webservice
 import (
 	"fmt"
 
-	"github.com/flexiant/kdeploy/config"
+	"github.com/flexiant/kdeploy/utils"
 )
 
 // KubeClient interface for a custom Kubernetes API client
@@ -20,7 +20,7 @@ type kubeClientImpl struct {
 
 // NewKubeClient builds a KubeClient object
 func NewKubeClient() (KubeClient, error) {
-	cfg, err := config.ReadConfig()
+	cfg, err := utils.CachedConfig()
 	if err != nil {
 		return nil, err
 	}

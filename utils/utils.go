@@ -10,6 +10,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+func FileExists(name string) bool {
+	_, err := os.Stat(name)
+	return !os.IsNotExist(err)
+}
+
 func CheckError(err error) {
 	if err != nil {
 		log.Fatal(err)
