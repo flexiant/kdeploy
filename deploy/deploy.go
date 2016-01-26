@@ -39,11 +39,11 @@ func Flags() []cli.Flag {
 }
 
 func PrepareFlags(c *cli.Context) error {
-	if c.IsSet("attribute") {
+	if c.String("attribute") != "" {
 		os.Setenv("KDEPLOY_ATTRIBUTE", c.String("attribute"))
 	}
 
-	if c.IsSet("kubeware") {
+	if c.String("kubeware") != "" {
 		os.Setenv("KDEPLOY_KUBEWARE", c.String("kubeware"))
 	}
 
