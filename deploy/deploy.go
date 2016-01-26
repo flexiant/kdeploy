@@ -3,8 +3,11 @@ package deploy
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
+	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/template"
@@ -32,7 +35,43 @@ func Flags() []cli.Flag {
 
 func CmdDeploy(c *cli.Context) {
 
-	md := template.ParseMetadata(c.String("kubeware"))
+	kubewarePath := c.String("kubeware")
+
+	// Validate if Kubeware is an url or not
+	kubewareUrl, _ := url.Parse(c.String("kubeware"))
+
+	if kubewareUrl != nil {
+		if kubewareUrl.Host == "github.com" {
+			log.Debugf("Going to download kubeware from %s", kubewareUrl.String())
+			path := strings.Split(kubewareUrl.Path, "/")
+			kubewareName := path[2]
+			newPath := []string{""}
+			newPath = append(newPath, path[1], path[2], "archive", "master.zip")
+
+			kubewareUrl.Path = strings.Join(newPath, "/")
+
+			client, err := webservice.NewSimpleWebClient(kubewareUrl.String())
+			utils.CheckError(err)
+
+			tmpDir, err := ioutil.TempDir("", "kdeploy")
+			utils.CheckError(err)
+
+			zipFileLocation, err := client.GetFile(kubewareUrl.Path, tmpDir)
+			utils.CheckError(err)
+
+			err = utils.Unzip(zipFileLocation, tmpDir)
+			utils.CheckError(err)
+
+			kubewarePath = fmt.Sprintf("%s/%s-master/", tmpDir, kubewareName)
+
+		} else {
+			panic("We currently only support Github urls")
+		}
+	}
+
+	log.Debugf("Going to parse kubeware in %s", kubewarePath)
+
+	md := template.ParseMetadata(kubewarePath)
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults

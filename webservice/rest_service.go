@@ -5,47 +5,58 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"path"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/kdeploy/config"
 )
 
 type RestService struct {
 	client   *http.Client
-	endpoint string
+	endpoint *url.URL
 }
 
 func NewRestService(config config.Config) (*RestService, error) {
 	client, err := httpClient(config)
 	if err != nil {
-		return nil, fmt.Errorf("error creating HTTP client: %v", err)
+		return nil, err
 	}
-	return &RestService{client, extractEndpoint(config)}, nil
+
+	endpoint, err := url.Parse(config.Connection.APIEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	return &RestService{client, endpoint}, nil
 }
 
-func extractEndpoint(config config.Config) string {
-	endpoint := config.Connection.APIEndpoint
-	if strings.HasSuffix(endpoint, "/") {
-		return endpoint
+func NewSimpleWebClient(httpUrl string) (*RestService, error) {
+	parsedUrl, err := url.Parse(httpUrl)
+	if err != nil {
+		return nil, err
 	}
-	return endpoint + "/"
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	return &RestService{client, parsedUrl}, nil
 }
 
 func httpClient(config config.Config) (*http.Client, error) {
 	// load client certificate
 	cert, err := tls.LoadX509KeyPair(config.Connection.Cert, config.Connection.Key)
 	if err != nil {
-		return nil, fmt.Errorf("error loading X509 key pair: %v", err)
+		return nil, err
 	}
 	// load CA file to verify server
 	caPool := x509.NewCertPool()
 	severCert, err := ioutil.ReadFile(config.Connection.CACert)
 	if err != nil {
-		return nil, fmt.Errorf("could not load CA file: %v", err)
+		return nil, err
 	}
 	caPool.AppendCertsFromPEM(severCert)
 	// create a client with specific transport configurations
@@ -66,53 +77,79 @@ func prettyprint(b []byte) []byte {
 	return out.Bytes()
 }
 
-func (r *RestService) Post(path string, json []byte) ([]byte, int, error) {
+func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
+	r.endpoint.Path = urlPath
 	output := strings.NewReader(string(json))
-	log.Printf("debug: post request path: %s , body: \n%s\n", r.endpoint+path, string(prettyprint(json)))
-	response, err := r.client.Post(r.endpoint+path, "application/json", output)
+	log.Debugf("Post request url: %s , body: %s", r.endpoint.String(), string(prettyprint(json)))
+	response, err := r.client.Post(r.endpoint.String(), "application/json", output)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error on http request (POST %v): %v", r.endpoint+path, err)
+		return nil, -1, err
 	}
 	defer response.Body.Close()
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error reading http request body: %v", err)
+		return nil, -1, err
 	}
 
 	return body, response.StatusCode, err
 }
 
-func (r *RestService) Delete(path string) ([]byte, int, error) {
-	request, err := http.NewRequest("DELETE", r.endpoint+path, nil)
+func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
+	r.endpoint.Path = urlPath
+	log.Debugf("Delete request url: %s", r.endpoint.String())
+	request, err := http.NewRequest("DELETE", r.endpoint.String(), nil)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error creating http request (DELETE %v): %v", r.endpoint+path, err)
+		return nil, -1, err
 	}
 	response, err := r.client.Do(request)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error executing http request (DELETE %v): %v", r.endpoint+path, err)
+		return nil, -1, err
 	}
 	defer response.Body.Close()
 
 	body, _ := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error reading http request body: %v", err)
+		return nil, -1, err
 	}
 
 	return body, response.StatusCode, nil
 }
 
-func (r *RestService) Get(path string) ([]byte, int, error) {
-	response, err := r.client.Get(r.endpoint + path)
+func (r *RestService) Get(urlPath string) ([]byte, int, error) {
+	log.Debugf("Get request url: %s", r.endpoint.String())
+	response, err := r.client.Get(r.endpoint.String())
 	if err != nil {
-		return nil, -1, fmt.Errorf("error on http request (GET %v): %v", r.endpoint+path, err)
+		return nil, -1, err
 	}
 	defer response.Body.Close()
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error reading http request body: %v", err)
+		return nil, -1, err
 	}
 
 	return body, response.StatusCode, nil
+}
+
+func (r *RestService) GetFile(urlPath string, directory string) (string, error) {
+	log.Debugf("Get file request url: %s destination: %s", r.endpoint.String(), directory)
+	response, err := r.client.Get(r.endpoint.String())
+	if err != nil {
+		return "", err
+	}
+
+	slice := strings.Split(urlPath, "/")
+	fileName := slice[len(slice)-1:][0]
+
+	filePath := path.Join(directory, fileName)
+
+	out, err := os.Create(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer out.Close()
+	io.Copy(out, response.Body)
+	return filePath, nil
 }
