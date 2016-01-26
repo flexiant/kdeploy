@@ -55,8 +55,7 @@ func PrepareFlags(c *cli.Context) error {
 }
 
 func CmdDeploy(c *cli.Context) {
-	// Validate if Kubeware is an url or not
-	kubewareUrl, _ := url.Parse(c.String("kubeware"))
+	kubewareUrl, _ := url.Parse(os.Getenv("KDEPLOY_KUBEWARE"))
 
 	if kubewareUrl != nil {
 		if kubewareUrl.Host == "github.com" {
