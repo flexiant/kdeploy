@@ -55,14 +55,15 @@ func PrepareFlags(c *cli.Context) error {
 }
 
 func CmdDeploy(c *cli.Context) {
+
 	kubewareUrl, _ := url.Parse(os.Getenv("KDEPLOY_KUBEWARE"))
 
 	if kubewareUrl != nil {
 		if kubewareUrl.Host == "github.com" {
 			path := strings.Split(kubewareUrl.Path, "/")
 			kubewareName := path[2]
-			newPath := []string{""}
-			newPath = append(newPath, path[1], path[2], "archive", "master.zip")
+
+			newPath := append([]string{""}, path[1], path[2], "archive", "master.zip")
 
 			kubewareUrl.Path = strings.Join(newPath, "/")
 
