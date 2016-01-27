@@ -2,12 +2,7 @@ package delete
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
-	"io/ioutil"
-	"net/url"
 	"os"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -52,7 +47,7 @@ func PrepareFlags(c *cli.Context) error {
 
 // CmdDelete implements 'delete' command
 func CmdDelete(c *cli.Context) {
-	localKubePath, err := FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
+	localKubePath, err := utils.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
 	utils.CheckError(err)
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
@@ -166,37 +161,4 @@ func getDeployedControllersForKubeware(m template.Metadata) ([]string, error) {
 		names = append(names, c.Metadata.Name)
 	}
 	return names, nil
-}
-
-// FetchKubeFromURL fetches a remote kubeware, extracts it locally, and returns its local path
-func FetchKubeFromURL(kubeURL string) (string, error) {
-	kubewareURL, err := url.Parse(kubeURL)
-	if err != nil {
-		return "", err
-	}
-
-	if kubewareURL.Host != "github.com" {
-		return "", errors.New("We currently only support Github urls")
-	}
-
-	path := strings.Split(kubewareURL.Path, "/")
-	kubewareName := path[2]
-
-	newPath := append([]string{""}, path[1], path[2], "archive", "master.zip")
-
-	kubewareURL.Path = strings.Join(newPath, "/")
-
-	client, err := webservice.NewSimpleWebClient(kubewareURL.String())
-	utils.CheckError(err)
-
-	tmpDir, err := ioutil.TempDir("", "kdeploy")
-	utils.CheckError(err)
-
-	zipFileLocation, err := client.GetFile(kubewareURL.Path, tmpDir)
-	utils.CheckError(err)
-
-	err = utils.Unzip(zipFileLocation, tmpDir)
-	utils.CheckError(err)
-
-	return fmt.Sprintf("%s/%s-master/", tmpDir, kubewareName), nil
 }

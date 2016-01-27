@@ -5,6 +5,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/config"
 	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
 	"github.com/flexiant/kdeploy/utils"
@@ -27,14 +28,14 @@ func prepareFlags(c *cli.Context) error {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	utils.InitializeConfig(c)
+	config.InitializeConfig(c)
 
 	return nil
 }
 
 func main() {
 
-	config, _ := utils.ReadConfig()
+	config, _ := config.ReadConfig()
 
 	app := cli.NewApp()
 	app.Name = "kdeploy"
