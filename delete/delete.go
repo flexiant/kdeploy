@@ -16,6 +16,7 @@ import (
 	"github.com/flexiant/kdeploy/webservice"
 )
 
+// Flags builds a spec of the flags available for the command
 func Flags() []cli.Flag {
 	return []cli.Flag{
 		cli.StringFlag{
@@ -32,6 +33,7 @@ func Flags() []cli.Flag {
 	}
 }
 
+// PrepareFlags processes the flags
 func PrepareFlags(c *cli.Context) error {
 	if c.String("attribute") != "" {
 		os.Setenv("KDEPLOY_ATTRIBUTE", c.String("attribute"))
@@ -61,38 +63,72 @@ func CmdDelete(c *cli.Context) {
 	// get services which are currently deployed as part of the kube
 	serviceNames, err := getDeployedServicesForKubeware(md)
 	utils.CheckError(err)
-
-	fmt.Println("Services: ")
-	for _, s := range serviceNames {
-		fmt.Println(" - " + s)
-	}
+	log.Debugf("Services: %v", serviceNames)
 
 	// get controllers which are currently deployed as part of the kube
-	// controllers, err := getDeployedControllersForKubeware(md)
-	// utils.CheckError(err)
+	controllerNames, err := getDeployedControllersForKubeware(md)
+	utils.CheckError(err)
+	log.Debugf("Controllers: %v", controllerNames)
 
 	// delete them
-	// err := deleteServices(services)
-	// utils.CheckError(err)
+	err = deleteServices(serviceNames)
+	utils.CheckError(err)
 
 	// delete them
-	// err := deleteControllers(controllers)
-	// utils.CheckError(err)
+	err = deleteControllers(controllerNames)
+	utils.CheckError(err)
 
 }
 
+func deleteServices(serviceNames []string) error {
+	kube, err := webservice.NewKubeClient()
+	if err != nil {
+		return err
+	}
+	for _, s := range serviceNames {
+		err := kube.DeleteService("default", s)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteControllers(controllerNames []string) error {
+	kube, err := webservice.NewKubeClient()
+	if err != nil {
+		return err
+	}
+	for _, c := range controllerNames {
+		err := kube.DeleteReplicationController("default", c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func getDeployedServicesForKubeware(m template.Metadata) ([]string, error) {
+
+	type ServiceList struct {
+		Items []struct {
+			Metadata struct {
+				Name string
+			}
+		}
+	}
+
 	kube, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 
 	labelSelector := map[string]string{
 		"kubeware": m.Name,
 	}
-	servicesJson, err := kube.GetServices(labelSelector)
+	servicesJSON, err := kube.GetServices(labelSelector)
 	utils.CheckError(err)
 
 	var svcList ServiceList
-	err = json.Unmarshal([]byte(servicesJson), &svcList)
+	err = json.Unmarshal([]byte(servicesJSON), &svcList)
 	utils.CheckError(err)
 
 	names := []string{}
@@ -102,57 +138,61 @@ func getDeployedServicesForKubeware(m template.Metadata) ([]string, error) {
 	return names, nil
 }
 
-type ServiceList struct {
-	Items []Service
-}
+func getDeployedControllersForKubeware(m template.Metadata) ([]string, error) {
 
-type Service struct {
-	Metadata struct {
-		Name string
+	type ControllersList struct {
+		Items []struct {
+			Metadata struct {
+				Name string
+			}
+		}
 	}
+
+	kube, err := webservice.NewKubeClient()
+	utils.CheckError(err)
+
+	labelSelector := map[string]string{
+		"kubeware": m.Name,
+	}
+	controllersJSON, err := kube.GetControllers(labelSelector)
+	utils.CheckError(err)
+
+	var rcList ControllersList
+	err = json.Unmarshal([]byte(controllersJSON), &rcList)
+	utils.CheckError(err)
+
+	names := []string{}
+	for _, c := range rcList.Items {
+		names = append(names, c.Metadata.Name)
+	}
+	return names, nil
 }
 
-// func getDeployedServicesForKubeware(m Metadata) ([]string, error) {
-// 	kube, err := webservice.NewKubeClient()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	labelSelector := map[string]string{"kubeware": m.Name}
-// 	services, err := kube.GetServices(labelSelector)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	serviceNames := []string{}
-// 	for _, s := range services {
-// 		serviceNames = append(serviceNames, s["name"])
-// 	}
-// 	return serviceNames, nil
-// }
-
+// FetchKubeFromURL fetches a remote kubeware, extracts it locally, and returns its local path
 func FetchKubeFromURL(kubeURL string) (string, error) {
-	kubewareUrl, err := url.Parse(kubeURL)
+	kubewareURL, err := url.Parse(kubeURL)
 	if err != nil {
 		return "", err
 	}
 
-	if kubewareUrl.Host != "github.com" {
+	if kubewareURL.Host != "github.com" {
 		return "", errors.New("We currently only support Github urls")
 	}
 
-	path := strings.Split(kubewareUrl.Path, "/")
+	path := strings.Split(kubewareURL.Path, "/")
 	kubewareName := path[2]
 
 	newPath := append([]string{""}, path[1], path[2], "archive", "master.zip")
 
-	kubewareUrl.Path = strings.Join(newPath, "/")
+	kubewareURL.Path = strings.Join(newPath, "/")
 
-	client, err := webservice.NewSimpleWebClient(kubewareUrl.String())
+	client, err := webservice.NewSimpleWebClient(kubewareURL.String())
 	utils.CheckError(err)
 
 	tmpDir, err := ioutil.TempDir("", "kdeploy")
 	utils.CheckError(err)
 
-	zipFileLocation, err := client.GetFile(kubewareUrl.Path, tmpDir)
+	zipFileLocation, err := client.GetFile(kubewareURL.Path, tmpDir)
 	utils.CheckError(err)
 
 	err = utils.Unzip(zipFileLocation, tmpDir)
