@@ -105,10 +105,6 @@ func CmdDeploy(c *cli.Context) {
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
 	log.Debugf("%v", controllersSpecs)
-
-	// get services just to check API availability
-	// getServices()
-
 	// create each of the services
 	log.Debugf("Creating services")
 	err = createServices(servicesSpecs)
@@ -117,13 +113,6 @@ func CmdDeploy(c *cli.Context) {
 	log.Debugf("Creating controllers")
 	err = createControllers(controllersSpecs)
 	utils.CheckError(err)
-}
-
-func getServices() {
-	kube, _ := webservice.NewKubeClient()
-	services, _ := kube.GetServices()
-	fmt.Println("services: ")
-	fmt.Println(services)
 }
 
 func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {

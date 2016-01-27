@@ -5,6 +5,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -92,8 +93,11 @@ func main() {
 			Flags:  deploy.Flags(),
 		},
 		{
-			Name:  "destroy",
-			Usage: "Destroys a Kubeware",
+			Name:   "delete",
+			Usage:  "Deletes a Kubeware",
+			Before: delete.PrepareFlags,
+			Action: delete.CmdDelete,
+			Flags:  delete.Flags(),
 		},
 		{
 			Name:  "list",

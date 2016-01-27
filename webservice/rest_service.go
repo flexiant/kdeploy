@@ -132,8 +132,13 @@ func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 	return body, response.StatusCode, nil
 }
 
-func (r *RestService) Get(urlPath string) ([]byte, int, error) {
+func (r *RestService) Get(urlPath string, params map[string]string) ([]byte, int, error) {
 	r.endpoint.Path = urlPath
+	values := url.Values{}
+	for k, v := range params {
+		values.Add(k, v)
+	}
+	r.endpoint.RawQuery = values.Encode()
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
 		log.Infof("Get request url: %s", r.endpoint.String())

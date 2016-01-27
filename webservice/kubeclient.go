@@ -2,13 +2,14 @@ package webservice
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/flexiant/kdeploy/utils"
 )
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetServices() (string, error)
+	GetServices(map[string]string) (string, error) // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
 	CreateService(string, []byte) (string, error)
 }
@@ -32,8 +33,16 @@ func NewKubeClient() (KubeClient, error) {
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *kubeClientImpl) GetServices() (string, error) {
-	json, _, err := k.service.Get("/api/v1/services?pretty=true")
+func (k *kubeClientImpl) GetServices(labelSelector map[string]string) (string, error) {
+	filter := url.Values{}
+	for k, v := range labelSelector {
+		filter.Add(k, v)
+	}
+	params := map[string]string{
+		"pretty":        "true",
+		"labelSelector": filter.Encode(),
+	}
+	json, _, err := k.service.Get("/api/v1/services", params)
 	if err != nil {
 		return "", fmt.Errorf("error getting services: %s", err)
 	}
