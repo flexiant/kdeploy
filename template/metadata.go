@@ -6,10 +6,9 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/utils"
+	"gopkg.in/yaml.v2"
 )
 
 // SingleAttributeMetadata holds metadata for a configuration attribute
@@ -31,8 +30,8 @@ type Metadata struct {
 	Description            string
 	Version                string
 	Attributes             AttributesMetadata
-	ReplicationControllers map[string]string
-	Services               map[string]string
+	ReplicationControllers map[string]string `yaml:"rc"`
+	Services               map[string]string `yaml:"svc"`
 	path                   string
 }
 

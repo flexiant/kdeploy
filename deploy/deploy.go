@@ -92,21 +92,29 @@ func CmdDeploy(c *cli.Context) {
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
+	log.Debugf("Building attributes")
 	attributes := buildAttributes(c.String("attribute"), defaults)
+	log.Debugf("%v", attributes)
 	// get list of services and parse each one
+	log.Debugf("Parsing services")
 	servicesSpecs, err := md.ParseServices(attributes)
 	utils.CheckError(err)
+	log.Debugf("%v", servicesSpecs)
 	// get list of replica controllers and parse each one
+	log.Debugf("Parsing controllers")
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
+	log.Debugf("%v", controllersSpecs)
 
 	// get services just to check API availability
 	// getServices()
 
 	// create each of the services
+	log.Debugf("Creating services")
 	err = createServices(servicesSpecs)
 	utils.CheckError(err)
 	// create each of the controllers
+	log.Debugf("Creating controllers")
 	err = createControllers(controllersSpecs)
 	utils.CheckError(err)
 }
