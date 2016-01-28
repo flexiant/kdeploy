@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
@@ -21,24 +23,38 @@ func PrepareFlags(c *cli.Context) error {
 
 // struct representing an item to be listed
 type Kube struct {
-	Services    []string
+	Services    []map[string]string
 	Controllers []string
 }
 
-// struct for unmarshalling json representations of services and rcs
 type resourceList struct {
 	Items []struct {
 		Metadata struct {
 			Name   string
 			Labels map[string]string
 		}
-		Spec struct {
-			ClusterIP string
-		}
-		Status struct {
-			// LoadBalancer struct {
-			// 	Ingress string
-			// }
+	}
+}
+
+// struct for unmarshalling json representations of services
+type serviceList struct {
+	Items []serviceItem
+}
+
+type serviceItem struct {
+	Metadata struct {
+		CreationTimestamp string
+		Name              string
+		Labels            map[string]string
+	}
+	Spec struct {
+		ClusterIP string
+	}
+	Status struct {
+		LoadBalancer struct {
+			Ingress []struct {
+				Hostname string
+			}
 		}
 	}
 }
@@ -54,21 +70,23 @@ func CmdList(c *cli.Context) {
 	// build the list to be printed
 	kubeList := buildKubeList(serviceList, controllersList)
 	// print the list
-	fmt.Printf("%+v", kubeList)
+	kyml, err := yaml.Marshal(kubeList)
+	utils.CheckError(err)
+	fmt.Printf("%s", kyml)
 }
 
-func buildKubeList(svcList, rcList *resourceList) map[string]Kube {
+func buildKubeList(svcList *serviceList, rcList *resourceList) map[string]Kube {
 	kmap := map[string]Kube{}
 	for _, service := range svcList.Items {
 		if kubeName, ok := service.Metadata.Labels["kubeware"]; ok {
 			// check if kube already in map
 			if _, ok := kmap[kubeName]; !ok {
 				// if not, create it
-				kmap[kubeName] = Kube{Services: []string{}, Controllers: []string{}}
+				kmap[kubeName] = Kube{}
 			}
 			// add the service to the kube's list of services
 			kube := kmap[kubeName]
-			kube.Services = append(kube.Services, service.Metadata.Name)
+			kube.Services = append(kube.Services, buildServiceRecord(service))
 			kmap[kubeName] = kube
 		}
 	}
@@ -77,7 +95,7 @@ func buildKubeList(svcList, rcList *resourceList) map[string]Kube {
 			// check if kube already in map
 			if _, ok := kmap[kubeName]; !ok {
 				// if not, create it
-				kmap[kubeName] = Kube{Services: []string{}, Controllers: []string{}}
+				kmap[kubeName] = Kube{}
 			}
 			// add the controller to the kube's list of controllers
 			kube := kmap[kubeName]
@@ -88,7 +106,18 @@ func buildKubeList(svcList, rcList *resourceList) map[string]Kube {
 	return kmap
 }
 
-func getServices() (*resourceList, error) {
+func buildServiceRecord(service serviceItem) map[string]string {
+	sr := map[string]string{}
+	sr["Name"] = service.Metadata.Name
+	sr["CreationDate"] = service.Metadata.CreationTimestamp
+	sr["ClusterIP"] = service.Spec.ClusterIP
+	if len(service.Status.LoadBalancer.Ingress) > 0 {
+		sr["ExternalFQDN"] = service.Status.LoadBalancer.Ingress[0].Hostname
+	}
+	return sr
+}
+
+func getServices() (*serviceList, error) {
 	kube, err := webservice.NewKubeClient()
 	if err != nil {
 		return nil, err
@@ -97,7 +126,7 @@ func getServices() (*resourceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResources(jsonServices)
+	return unmarshalServices(jsonServices)
 }
 
 func getControllers() (*resourceList, error) {
@@ -119,6 +148,15 @@ func unmarshalResources(jsonStr string) (*resourceList, error) {
 		return nil, err
 	}
 	return &rl, nil
+}
+
+func unmarshalServices(jsonStr string) (*serviceList, error) {
+	var sl serviceList
+	err := json.Unmarshal([]byte(jsonStr), &sl)
+	if err != nil {
+		return nil, err
+	}
+	return &sl, nil
 }
 
 func extractKubes(rl *resourceList) []string {
