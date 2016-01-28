@@ -8,6 +8,7 @@ import (
 	"github.com/flexiant/kdeploy/config"
 	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
+	"github.com/flexiant/kdeploy/list"
 	"github.com/flexiant/kdeploy/utils"
 )
 
@@ -101,8 +102,11 @@ func main() {
 			Flags:  delete.Flags(),
 		},
 		{
-			Name:  "list",
-			Usage: "List's Kubewares deployed",
+			Name:   "list",
+			Usage:  "List's Kubewares deployed",
+			Before: list.PrepareFlags,
+			Action: list.CmdList,
+			Flags:  list.Flags(),
 		},
 	}
 
