@@ -47,7 +47,7 @@ func PrepareFlags(c *cli.Context) error {
 
 // CmdDelete implements 'delete' command
 func CmdDelete(c *cli.Context) {
-	localKubePath, err := utils.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
+	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
 	utils.CheckError(err)
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
