@@ -1,4 +1,4 @@
-package utils
+package config
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/google/cadvisor/utils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -83,7 +84,7 @@ func ReadConfigFrom(path string) (*Config, error) {
 		return nil, err
 	}
 
-	if FileExists(cfgFile) {
+	if utils.FileExists(cfgFile) {
 		configBytes, err := ioutil.ReadFile(cfgFile)
 		if err != nil {
 			return nil, err

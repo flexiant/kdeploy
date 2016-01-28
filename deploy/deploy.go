@@ -1,12 +1,9 @@
 package deploy
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -56,66 +53,33 @@ func PrepareFlags(c *cli.Context) error {
 
 func CmdDeploy(c *cli.Context) {
 
-	kubewareUrl, _ := url.Parse(os.Getenv("KDEPLOY_KUBEWARE"))
+	localKubePath, err := utils.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
+	utils.CheckError(err)
 
-	if kubewareUrl != nil {
-		if kubewareUrl.Host == "github.com" {
-			path := strings.Split(kubewareUrl.Path, "/")
-			kubewareName := path[2]
+	log.Debugf("Going to parse kubeware in %s", localKubePath)
 
-			newPath := append([]string{""}, path[1], path[2], "archive", "master.zip")
-
-			kubewareUrl.Path = strings.Join(newPath, "/")
-
-			client, err := webservice.NewSimpleWebClient(kubewareUrl.String())
-			utils.CheckError(err)
-
-			tmpDir, err := ioutil.TempDir("", "kdeploy")
-			utils.CheckError(err)
-
-			zipFileLocation, err := client.GetFile(kubewareUrl.Path, tmpDir)
-			utils.CheckError(err)
-
-			err = utils.Unzip(zipFileLocation, tmpDir)
-			utils.CheckError(err)
-
-			os.Setenv("KDEPLOY_KUBEWARE", fmt.Sprintf("%s/%s-master/", tmpDir, kubewareName))
-
-		} else {
-			utils.CheckError(errors.New("We currently only support Github urls"))
-		}
-	}
-
-	log.Debugf("Going to parse kubeware in %s", os.Getenv("KDEPLOY_KUBEWARE"))
-
-	md := template.ParseMetadata(os.Getenv("KDEPLOY_KUBEWARE"))
+	md := template.ParseMetadata(localKubePath)
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
+	log.Debugf("Building attributes")
 	attributes := buildAttributes(c.String("attribute"), defaults)
 	// get list of services and parse each one
+	log.Debugf("Parsing services")
 	servicesSpecs, err := md.ParseServices(attributes)
 	utils.CheckError(err)
 	// get list of replica controllers and parse each one
+	log.Debugf("Parsing controllers")
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
-
-	// get services just to check API availability
-	// getServices()
-
 	// create each of the services
+	log.Debugf("Creating services")
 	err = createServices(servicesSpecs)
 	utils.CheckError(err)
 	// create each of the controllers
+	log.Debugf("Creating controllers")
 	err = createControllers(controllersSpecs)
 	utils.CheckError(err)
-}
-
-func getServices() {
-	kube, _ := webservice.NewKubeClient()
-	services, _ := kube.GetServices()
-	fmt.Println("services: ")
-	fmt.Println(services)
 }
 
 func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {

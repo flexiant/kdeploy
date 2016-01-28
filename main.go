@@ -5,7 +5,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/config"
+	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
+	"github.com/flexiant/kdeploy/list"
 	"github.com/flexiant/kdeploy/utils"
 )
 
@@ -26,14 +29,14 @@ func prepareFlags(c *cli.Context) error {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	utils.InitializeConfig(c)
+	config.InitializeConfig(c)
 
 	return nil
 }
 
 func main() {
 
-	config, _ := utils.ReadConfig()
+	config, _ := config.ReadConfig()
 
 	app := cli.NewApp()
 	app.Name = "kdeploy"
@@ -92,12 +95,18 @@ func main() {
 			Flags:  deploy.Flags(),
 		},
 		{
-			Name:  "destroy",
-			Usage: "Destroys a Kubeware",
+			Name:   "delete",
+			Usage:  "Deletes a Kubeware",
+			Before: delete.PrepareFlags,
+			Action: delete.CmdDelete,
+			Flags:  delete.Flags(),
 		},
 		{
-			Name:  "list",
-			Usage: "List's Kubewares deployed",
+			Name:   "list",
+			Usage:  "List's Kubewares deployed",
+			Before: list.PrepareFlags,
+			Action: list.CmdList,
+			Flags:  list.Flags(),
 		},
 	}
 

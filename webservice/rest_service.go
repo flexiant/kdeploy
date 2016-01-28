@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/flexiant/kdeploy/utils"
+	"github.com/flexiant/kdeploy/config"
 )
 
 type RestService struct {
@@ -24,7 +24,7 @@ type RestService struct {
 	endpoint *url.URL
 }
 
-func NewRestService(config utils.Config) (*RestService, error) {
+func NewRestService(config config.Config) (*RestService, error) {
 	client, err := httpClient(config)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func NewSimpleWebClient(httpUrl string) (*RestService, error) {
 	return &RestService{client, parsedUrl}, nil
 }
 
-func httpClient(config utils.Config) (*http.Client, error) {
+func httpClient(config config.Config) (*http.Client, error) {
 	// load client certificate
 	cert, err := tls.LoadX509KeyPair(config.Connection.Cert, config.Connection.Key)
 	if err != nil {
@@ -132,8 +132,13 @@ func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 	return body, response.StatusCode, nil
 }
 
-func (r *RestService) Get(urlPath string) ([]byte, int, error) {
+func (r *RestService) Get(urlPath string, params map[string]string) ([]byte, int, error) {
 	r.endpoint.Path = urlPath
+	values := url.Values{}
+	for k, v := range params {
+		values.Add(k, v)
+	}
+	r.endpoint.RawQuery = values.Encode()
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
 		log.Infof("Get request url: %s", r.endpoint.String())
