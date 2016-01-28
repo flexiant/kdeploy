@@ -22,28 +22,6 @@ type Config struct {
 	Path string
 }
 
-func ReadConfig() (*Config, error) {
-
-	if os.Getenv("KDEPLOY_CONFIG") != "" {
-		cfg, err := ReadConfigFrom(os.Getenv("KDEPLOY_CONFIG"))
-		if err != nil {
-			return cfg, nil
-		}
-	}
-
-	cfg, err := ReadConfigFrom(".kdeploy.yml")
-	if err == nil {
-		return cfg, nil
-	}
-
-	cfg, err = ReadConfigFrom("~/.kdeploy.yml")
-	if err == nil {
-		return cfg, nil
-	}
-
-	return nil, err
-}
-
 func CachedConfig() (*Config, error) {
 	count := 0
 	var config Config
@@ -74,6 +52,28 @@ func CachedConfig() (*Config, error) {
 	}
 	return nil, errors.New("Please check that all parameters are set in your configuration")
 
+}
+
+func ReadConfig() (*Config, error) {
+
+	if os.Getenv("KDEPLOY_CONFIG") != "" {
+		cfg, err := ReadConfigFrom(os.Getenv("KDEPLOY_CONFIG"))
+		if err != nil {
+			return cfg, nil
+		}
+	}
+
+	cfg, err := ReadConfigFrom(".kdeploy.yml")
+	if err == nil {
+		return cfg, nil
+	}
+
+	cfg, err = ReadConfigFrom("~/.kdeploy.yml")
+	if err == nil {
+		return cfg, nil
+	}
+
+	return nil, err
 }
 
 func ReadConfigFrom(path string) (*Config, error) {
