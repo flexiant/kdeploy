@@ -23,16 +23,21 @@ func PrepareFlags(c *cli.Context) error {
 
 // struct representing an item to be listed
 type Kube struct {
-	Services    []map[string]string
-	Controllers []string
+	Services    []map[string]interface{}
+	Controllers []map[string]interface{}
 }
 
-type resourceList struct {
-	Items []struct {
-		Metadata struct {
-			Name   string
-			Labels map[string]string
-		}
+type controllerList struct {
+	Items []controllerItem
+}
+
+type controllerItem struct {
+	Metadata struct {
+		Name   string
+		Labels map[string]string
+	}
+	Status struct {
+		Replicas int
 	}
 }
 
@@ -75,7 +80,7 @@ func CmdList(c *cli.Context) {
 	fmt.Printf("%s", kyml)
 }
 
-func buildKubeList(svcList *serviceList, rcList *resourceList) map[string]Kube {
+func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube {
 	kmap := map[string]Kube{}
 	for _, service := range svcList.Items {
 		if kubeName, ok := service.Metadata.Labels["kubeware"]; ok {
@@ -99,21 +104,28 @@ func buildKubeList(svcList *serviceList, rcList *resourceList) map[string]Kube {
 			}
 			// add the controller to the kube's list of controllers
 			kube := kmap[kubeName]
-			kube.Controllers = append(kube.Controllers, controller.Metadata.Name)
+			kube.Controllers = append(kube.Controllers, buildControllerRecord(controller))
 			kmap[kubeName] = kube
 		}
 	}
 	return kmap
 }
 
-func buildServiceRecord(service serviceItem) map[string]string {
-	sr := map[string]string{}
+func buildServiceRecord(service serviceItem) map[string]interface{} {
+	sr := map[string]interface{}{}
 	sr["Name"] = service.Metadata.Name
 	sr["CreationDate"] = service.Metadata.CreationTimestamp
 	sr["ClusterIP"] = service.Spec.ClusterIP
 	if len(service.Status.LoadBalancer.Ingress) > 0 {
 		sr["ExternalFQDN"] = service.Status.LoadBalancer.Ingress[0].Hostname
 	}
+	return sr
+}
+
+func buildControllerRecord(controller controllerItem) map[string]interface{} {
+	sr := map[string]interface{}{}
+	sr["Name"] = controller.Metadata.Name
+	sr["Replicas"] = controller.Status.Replicas
 	return sr
 }
 
@@ -129,7 +141,7 @@ func getServices() (*serviceList, error) {
 	return unmarshalServices(jsonServices)
 }
 
-func getControllers() (*resourceList, error) {
+func getControllers() (*controllerList, error) {
 	kube, err := webservice.NewKubeClient()
 	if err != nil {
 		return nil, err
@@ -138,11 +150,11 @@ func getControllers() (*resourceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResources(jsonControllers)
+	return unmarshalControllers(jsonControllers)
 }
 
-func unmarshalResources(jsonStr string) (*resourceList, error) {
-	var rl resourceList
+func unmarshalControllers(jsonStr string) (*controllerList, error) {
+	var rl controllerList
 	err := json.Unmarshal([]byte(jsonStr), &rl)
 	if err != nil {
 		return nil, err
@@ -157,14 +169,4 @@ func unmarshalServices(jsonStr string) (*serviceList, error) {
 		return nil, err
 	}
 	return &sl, nil
-}
-
-func extractKubes(rl *resourceList) []string {
-	knames := []string{}
-	for _, r := range rl.Items {
-		if name, ok := r.Metadata.Labels["kubeware"]; ok {
-			knames = append(knames, name)
-		}
-	}
-	return knames
 }
