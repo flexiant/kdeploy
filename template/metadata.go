@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/utils"
 	"gopkg.in/yaml.v2"
@@ -127,6 +128,7 @@ func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return m.parseTemplates(m.Services, attributes)
 }
 
@@ -142,6 +144,7 @@ func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
 func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) ([]string, error) {
 	var specs = []string{}
 	for _, templateFile := range templates {
+		log.Debugf("Going to parse %s/%s", m.path, templateFile)
 		specMap, err := parseTemplate(fmt.Sprintf("%s/%s", m.path, templateFile), attributes)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
@@ -175,8 +178,13 @@ func parseTemplate(templateFile string, attributes digger.Digger) (map[string]in
 
 func addKubewareLabel(name string, specmap map[string]interface{}) error {
 	metadata := specmap["metadata"].(map[string]interface{})
-	labels := metadata["labels"].(map[string]interface{})
-	labels["kubeware"] = name
+	if metadata["labels"] != nil {
+		labels := metadata["labels"].(map[string]interface{})
+		labels["kubeware"] = name
+	} else {
+		metadata["labels"] = map[string]string{"kubeware": name}
+	}
+
 	return nil
 }
 

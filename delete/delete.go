@@ -2,6 +2,7 @@ package delete
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
@@ -73,6 +74,7 @@ func CmdDelete(c *cli.Context) {
 	err = deleteControllers(controllerNames)
 	utils.CheckError(err)
 
+	fmt.Printf("Kubeware %s from %s has been deleted", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))
 }
 
 func deleteServices(serviceNames []string) error {

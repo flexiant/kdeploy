@@ -1,13 +1,13 @@
-{  
-   "rc":{  
-      "frontend":{  
-         "number":6,
-         "container":{  
-            "name":"contname",
-            "image":"somerepo/someimage",
-            "version":"latest",
-            "port":8080
-         }
+{
+   "rc":{
+      "frontend":{
+         "number":8
+     },
+      "redis-slave":{
+         "number":3
+     },
+      "spark-worker":{
+         "number":2
       }
    }
 }

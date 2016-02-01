@@ -117,7 +117,8 @@ func CmdList(c *cli.Context) {
 				} else {
 					fmt.Fprintf(w, "%s\t%d\t%d%%\t%d\n", kubewareName, len(kubeware.Services), up, len(kubeware.Controllers))
 				}
-
+				up = 0
+				fqdns = []string{}
 			}
 		}
 		if c.Bool("all") {

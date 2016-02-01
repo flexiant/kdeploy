@@ -80,6 +80,8 @@ func CmdDeploy(c *cli.Context) {
 	log.Debugf("Creating controllers")
 	err = createControllers(controllersSpecs)
 	utils.CheckError(err)
+
+	fmt.Printf("Kubeware %s from %s has been deployed", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))
 }
 
 func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
