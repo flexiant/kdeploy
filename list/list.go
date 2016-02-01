@@ -3,8 +3,9 @@ package list
 import (
 	"encoding/json"
 	"fmt"
-
-	"gopkg.in/yaml.v2"
+	"os"
+	"strings"
+	"text/tabwriter"
 
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/utils"
@@ -13,7 +14,20 @@ import (
 
 // Flags builds a spec of the flags available for the command
 func Flags() []cli.Flag {
-	return []cli.Flag{}
+	return []cli.Flag{
+		cli.BoolFlag{
+			Name:  "all, a",
+			Usage: "List Kubeware, SVC, RC",
+		},
+		cli.BoolFlag{
+			Name:  "services, svc",
+			Usage: "List Services",
+		},
+		cli.BoolFlag{
+			Name:  "controllers, rc",
+			Usage: "List Replica Controllers",
+		},
+	}
 }
 
 // PrepareFlags processes the flags
@@ -66,6 +80,7 @@ type serviceItem struct {
 
 // CmdList implements 'list' command
 func CmdList(c *cli.Context) {
+	var fqdns []string
 	// Get all services to extract their kubeware labels
 	serviceList, err := getServices()
 	utils.CheckError(err)
@@ -74,10 +89,54 @@ func CmdList(c *cli.Context) {
 	utils.CheckError(err)
 	// build the list to be printed
 	kubeList := buildKubeList(serviceList, controllersList)
-	// print the list
-	kyml, err := yaml.Marshal(kubeList)
-	utils.CheckError(err)
-	fmt.Printf("%s", kyml)
+
+	w := tabwriter.NewWriter(os.Stdout, 15, 1, 3, ' ', 0)
+
+	if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
+		fmt.Fprintln(w, "KUBEWARE\tSVC\tRC\tFQDN\r")
+		for kubewareName, kubeware := range kubeList {
+			for _, service := range kubeware.Services {
+				if service["ExternalFQDN"] != nil {
+					fqdns = append(fqdns, service["ExternalFQDN"].(string))
+				}
+			}
+			if len(fqdns) > 0 {
+				fmt.Fprintf(w, "%s\t%d\t%d\t%s\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers), strings.Join(fqdns, ","))
+			} else {
+				fmt.Fprintf(w, "%s\t%d\t%d\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers))
+			}
+
+		}
+	}
+	if c.Bool("all") {
+		fmt.Fprintln(w, "\n")
+	}
+	if c.Bool("all") || c.Bool("services") {
+		fmt.Fprintln(w, "KUBEWARE\tSVC\tINTERNAL IP\tFQDN\r")
+		for kubewareName, kubeware := range kubeList {
+			for _, service := range kubeware.Services {
+				if service["ExternalFQDN"] != nil {
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"], service["ExternalFQDN"])
+				} else {
+					fmt.Fprintf(w, "%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"])
+				}
+
+			}
+		}
+	}
+	if c.Bool("all") {
+		fmt.Fprintln(w, "\n")
+	}
+	if c.Bool("all") || c.Bool("controllers") {
+		fmt.Fprintln(w, "KUBEWARE\tRC\tREPLICAS\r")
+		for kubewareName, kubeware := range kubeList {
+			for _, controller := range kubeware.Controllers {
+				fmt.Fprintf(w, "%s\t%s\t%d\n", kubewareName, controller["Name"], controller["Replicas"])
+			}
+		}
+	}
+
+	w.Flush()
 }
 
 func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube {
