@@ -50,6 +50,9 @@ type controllerItem struct {
 		Name   string
 		Labels map[string]string
 	}
+	Spec struct {
+		Replicas int
+	}
 	Status struct {
 		Replicas int
 	}
@@ -81,6 +84,7 @@ type serviceItem struct {
 // CmdList implements 'list' command
 func CmdList(c *cli.Context) {
 	var fqdns []string
+	up := 0
 	// Get all services to extract their kubeware labels
 	serviceList, err := getServices()
 	utils.CheckError(err)
@@ -90,53 +94,63 @@ func CmdList(c *cli.Context) {
 	// build the list to be printed
 	kubeList := buildKubeList(serviceList, controllersList)
 
-	w := tabwriter.NewWriter(os.Stdout, 15, 1, 3, ' ', 0)
+	if len(kubeList) > 0 {
+		w := tabwriter.NewWriter(os.Stdout, 15, 1, 3, ' ', 0)
 
-	if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
-		fmt.Fprintln(w, "KUBEWARE\tSVC\tRC\tFQDN\r")
-		for kubewareName, kubeware := range kubeList {
-			for _, service := range kubeware.Services {
-				if service["ExternalFQDN"] != nil {
-					fqdns = append(fqdns, service["ExternalFQDN"].(string))
+		if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
+			fmt.Fprintln(w, "KUBEWARE\tSVC\tRC\tUP\tFQDN\r")
+			for kubewareName, kubeware := range kubeList {
+				for _, service := range kubeware.Services {
+					if service["ExternalFQDN"] != nil {
+						fqdns = append(fqdns, service["ExternalFQDN"].(string))
+					}
 				}
-			}
-			if len(fqdns) > 0 {
-				fmt.Fprintf(w, "%s\t%d\t%d\t%s\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers), strings.Join(fqdns, ","))
-			} else {
-				fmt.Fprintf(w, "%s\t%d\t%d\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers))
-			}
+				for _, controller := range kubeware.Controllers {
+					up = up + controller["Up"].(int)
+				}
+				if len(kubeware.Services) > 0 {
+					up = up / len(kubeware.Services)
+				}
 
-		}
-	}
-	if c.Bool("all") {
-		fmt.Fprintln(w, "\n")
-	}
-	if c.Bool("all") || c.Bool("services") {
-		fmt.Fprintln(w, "KUBEWARE\tSVC\tINTERNAL IP\tFQDN\r")
-		for kubewareName, kubeware := range kubeList {
-			for _, service := range kubeware.Services {
-				if service["ExternalFQDN"] != nil {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"], service["ExternalFQDN"])
+				if len(fqdns) > 0 {
+					fmt.Fprintf(w, "%s\t%d\t%d\t%d%%\t%s\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
 				} else {
-					fmt.Fprintf(w, "%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"])
+					fmt.Fprintf(w, "%s\t%d\t%d%%\t%d\n", kubewareName, len(kubeware.Services), up, len(kubeware.Controllers))
 				}
 
 			}
 		}
-	}
-	if c.Bool("all") {
-		fmt.Fprintln(w, "\n")
-	}
-	if c.Bool("all") || c.Bool("controllers") {
-		fmt.Fprintln(w, "KUBEWARE\tRC\tREPLICAS\r")
-		for kubewareName, kubeware := range kubeList {
-			for _, controller := range kubeware.Controllers {
-				fmt.Fprintf(w, "%s\t%s\t%d\n", kubewareName, controller["Name"], controller["Replicas"])
+		if c.Bool("all") {
+			fmt.Fprintf(w, "\n")
+		}
+		if c.Bool("all") || c.Bool("services") {
+			fmt.Fprintln(w, "KUBEWARE\tSVC\tINTERNAL IP\tFQDN\r")
+			for kubewareName, kubeware := range kubeList {
+				for _, service := range kubeware.Services {
+					if service["ExternalFQDN"] != nil {
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"], service["ExternalFQDN"])
+					} else {
+						fmt.Fprintf(w, "%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"])
+					}
+
+				}
 			}
 		}
+		if c.Bool("all") {
+			fmt.Fprintf(w, "\n")
+		}
+		if c.Bool("all") || c.Bool("controllers") {
+			fmt.Fprintln(w, "KUBEWARE\tRC\tREPLICAS\tUP\r")
+			for kubewareName, kubeware := range kubeList {
+				for _, controller := range kubeware.Controllers {
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d%%\n", kubewareName, controller["Name"], controller["Replicas"], controller["Up"])
+				}
+			}
+		}
+		w.Flush()
+	} else {
+		fmt.Printf("No Kubeware's deployed")
 	}
-
-	w.Flush()
 }
 
 func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube {
@@ -185,6 +199,7 @@ func buildControllerRecord(controller controllerItem) map[string]interface{} {
 	sr := map[string]interface{}{}
 	sr["Name"] = controller.Metadata.Name
 	sr["Replicas"] = controller.Status.Replicas
+	sr["Up"] = (controller.Status.Replicas / controller.Spec.Replicas) * 100
 	return sr
 }
 
@@ -209,6 +224,7 @@ func getControllers() (*controllerList, error) {
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Printf("%s", jsonControllers)
 	return unmarshalControllers(jsonControllers)
 }
 
