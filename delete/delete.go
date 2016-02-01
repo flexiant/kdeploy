@@ -23,7 +23,7 @@ func Flags() []cli.Flag {
 		},
 		cli.BoolFlag{
 			Name:   "dry-run, d",
-			Usage:  "Dry Run of Deploy used for debuging options",
+			Usage:  "Dry Run of Deploy used for debugging options",
 			EnvVar: "KDEPLOY_DRYRUN",
 		},
 	}
