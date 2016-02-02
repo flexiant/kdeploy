@@ -18,8 +18,13 @@ func Flags() []cli.Flag {
 		cli.StringFlag{
 			Name:   "kubeware, k",
 			Usage:  "Kubeware path",
-			Value:  "https://github.com/flexiant/kubeware-guestbook",
 			EnvVar: "KDEPLOY_KUBEWARE",
+		},
+		cli.StringFlag{
+			Name:   "namespace, n",
+			Usage:  "Namespace which to deploy Kubeware",
+			Value:  "default",
+			EnvVar: "KDEPLOY_NAMESPACE",
 		},
 		cli.BoolFlag{
 			Name:   "dry-run, d",
@@ -42,6 +47,8 @@ func PrepareFlags(c *cli.Context) error {
 	if c.Bool("dry-run") {
 		os.Setenv("KDEPLOY_DRYRUN", "1")
 	}
+
+	os.Setenv("KDEPLOY_NAMESPACE", c.String("namespace"))
 
 	return nil
 }
@@ -83,7 +90,7 @@ func deleteServices(serviceNames []string) error {
 		return err
 	}
 	for _, s := range serviceNames {
-		err := kube.DeleteService("default", s)
+		err := kube.DeleteService(os.Getenv("KDEPLOY_NAMESPACE"), s)
 		if err != nil {
 			return err
 		}
@@ -97,7 +104,7 @@ func deleteControllers(controllerNames []string) error {
 		return err
 	}
 	for _, c := range controllerNames {
-		err := kube.DeleteReplicationController("default", c)
+		err := kube.DeleteReplicationController(os.Getenv("KDEPLOY_NAMESPACE"), c)
 		if err != nil {
 			return err
 		}

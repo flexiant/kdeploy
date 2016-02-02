@@ -41,14 +41,24 @@ type Kube struct {
 	Controllers []map[string]interface{}
 }
 
+func (k *Kube) GetNamespace() string {
+	if len(k.Services) > 0 {
+		return k.Services[0]["Namespace"].(string)
+	} else if len(k.Controllers) > 0 {
+		return k.Services[0]["Namespace"].(string)
+	}
+	return ""
+}
+
 type controllerList struct {
 	Items []controllerItem
 }
 
 type controllerItem struct {
 	Metadata struct {
-		Name   string
-		Labels map[string]string
+		Name      string
+		Labels    map[string]string
+		Namespace string
 	}
 	Spec struct {
 		Replicas int
@@ -68,6 +78,7 @@ type serviceItem struct {
 		CreationTimestamp string
 		Name              string
 		Labels            map[string]string
+		Namespace         string
 	}
 	Spec struct {
 		ClusterIP string
@@ -98,7 +109,7 @@ func CmdList(c *cli.Context) {
 		w := tabwriter.NewWriter(os.Stdout, 15, 1, 3, ' ', 0)
 
 		if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
-			fmt.Fprintln(w, "KUBEWARE\tSVC\tRC\tUP\tFQDN\r")
+			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tSVC\tRC\tUP\tFQDN\r")
 			for kubewareName, kubeware := range kubeList {
 				for _, service := range kubeware.Services {
 					if service["ExternalFQDN"] != nil {
@@ -113,9 +124,9 @@ func CmdList(c *cli.Context) {
 				}
 
 				if len(fqdns) > 0 {
-					fmt.Fprintf(w, "%s\t%d\t%d\t%d%%\t%s\n", kubewareName, len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d%%\t%s\n", kubewareName, kubeware.GetNamespace(), len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
 				} else {
-					fmt.Fprintf(w, "%s\t%d\t%d%%\t%d\n", kubewareName, len(kubeware.Services), up, len(kubeware.Controllers))
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d%%\t%d\n", kubewareName, kubeware.GetNamespace(), len(kubeware.Services), up, len(kubeware.Controllers))
 				}
 				up = 0
 				fqdns = []string{}
@@ -125,13 +136,13 @@ func CmdList(c *cli.Context) {
 			fmt.Fprintf(w, "\n")
 		}
 		if c.Bool("all") || c.Bool("services") {
-			fmt.Fprintln(w, "KUBEWARE\tSVC\tINTERNAL IP\tFQDN\r")
+			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tSVC\tINTERNAL IP\tFQDN\r")
 			for kubewareName, kubeware := range kubeList {
 				for _, service := range kubeware.Services {
 					if service["ExternalFQDN"] != nil {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"], service["ExternalFQDN"])
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", kubewareName, service["Namespace"], service["Name"], service["ClusterIP"], service["ExternalFQDN"])
 					} else {
-						fmt.Fprintf(w, "%s\t%s\t%s\n", kubewareName, service["Name"], service["ClusterIP"])
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Namespace"], service["Name"], service["ClusterIP"])
 					}
 
 				}
@@ -141,10 +152,10 @@ func CmdList(c *cli.Context) {
 			fmt.Fprintf(w, "\n")
 		}
 		if c.Bool("all") || c.Bool("controllers") {
-			fmt.Fprintln(w, "KUBEWARE\tRC\tREPLICAS\tUP\r")
+			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tRC\tREPLICAS\tUP\r")
 			for kubewareName, kubeware := range kubeList {
 				for _, controller := range kubeware.Controllers {
-					fmt.Fprintf(w, "%s\t%s\t%d\t%d%%\n", kubewareName, controller["Name"], controller["Replicas"], controller["Up"])
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\n", kubewareName, controller["Namespace"], controller["Name"], controller["Replicas"], controller["Up"])
 				}
 			}
 		}
@@ -188,6 +199,7 @@ func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube
 func buildServiceRecord(service serviceItem) map[string]interface{} {
 	sr := map[string]interface{}{}
 	sr["Name"] = service.Metadata.Name
+	sr["Namespace"] = service.Metadata.Namespace
 	sr["CreationDate"] = service.Metadata.CreationTimestamp
 	sr["ClusterIP"] = service.Spec.ClusterIP
 	if len(service.Status.LoadBalancer.Ingress) > 0 {
@@ -200,6 +212,7 @@ func buildControllerRecord(controller controllerItem) map[string]interface{} {
 	sr := map[string]interface{}{}
 	sr["Name"] = controller.Metadata.Name
 	sr["Replicas"] = controller.Status.Replicas
+	sr["Namespace"] = controller.Metadata.Namespace
 	sr["Up"] = (controller.Status.Replicas / controller.Spec.Replicas) * 100
 	return sr
 }

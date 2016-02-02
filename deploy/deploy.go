@@ -18,14 +18,18 @@ func Flags() []cli.Flag {
 		cli.StringFlag{
 			Name:   "attribute, a",
 			Usage:  "Attribute List",
-			Value:  "./examples/attributes.json",
 			EnvVar: "KDEPLOY_ATTRIBUTE",
 		},
 		cli.StringFlag{
 			Name:   "kubeware, k",
 			Usage:  "Kubeware path",
-			Value:  "https://github.com/flexiant/kubeware-guestbook",
 			EnvVar: "KDEPLOY_KUBEWARE",
+		},
+		cli.StringFlag{
+			Name:   "namespace, n",
+			Usage:  "Namespace which to deploy Kubeware",
+			Value:  "default",
+			EnvVar: "KDEPLOY_NAMESPACE",
 		},
 		cli.BoolFlag{
 			Name:   "dry-run, d",
@@ -48,11 +52,13 @@ func PrepareFlags(c *cli.Context) error {
 		os.Setenv("KDEPLOY_DRYRUN", "1")
 	}
 
+	os.Setenv("KDEPLOY_NAMESPACE", c.String("namespace"))
+
 	return nil
 }
 
 func CmdDeploy(c *cli.Context) {
-
+	// utils.CheckRequiredFlags(c, []string{"attribute", "kubeware", "namespace"})
 	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
 	utils.CheckError(err)
 
@@ -106,7 +112,7 @@ func createServices(svcSpecs []string) error {
 		return err
 	}
 	for _, spec := range svcSpecs {
-		_, err = kube.CreateService("default", []byte(spec))
+		_, err = kube.CreateService(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
 		if err != nil {
 			return fmt.Errorf("error creating services: %v", err)
 		}
@@ -120,7 +126,7 @@ func createControllers(rcSpecs []string) error {
 		return fmt.Errorf("error creating kube client: %v", err)
 	}
 	for _, spec := range rcSpecs {
-		_, err = kube.CreateReplicaController("default", []byte(spec))
+		_, err = kube.CreateReplicaController(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
 		if err != nil {
 			return fmt.Errorf("error creating replication controllers: %v", err)
 		}

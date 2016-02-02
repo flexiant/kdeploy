@@ -2,13 +2,31 @@ package utils
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 )
+
+// CheckRequiredFlags checks for required flags, and show usage if requirements not met
+func CheckRequiredFlags(c *cli.Context, flags []string) {
+	missing := ""
+	for _, flag := range flags {
+		if c.String(flag) != "" {
+			missing = fmt.Sprintf("%s\t--%s\n", missing, flag)
+		}
+	}
+
+	if missing != "" {
+		fmt.Printf("Incorrect usage. Please use parameters:\n%s\n", missing)
+		cli.ShowCommandHelp(c, c.Command.Name)
+		os.Exit(2)
+	}
+}
 
 func FileExists(name string) bool {
 	_, err := os.Stat(name)
