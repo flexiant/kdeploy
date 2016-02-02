@@ -104,6 +104,35 @@ func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
 	return body, response.StatusCode, err
 }
 
+func (r *RestService) Patch(urlPath string, json []byte) ([]byte, int, error) {
+	r.endpoint.Path = urlPath
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Patch request url: %s , body:\n%s", r.endpoint.String(), string(prettyprint(json)))
+		return nil, 200, nil
+	} else {
+		log.Debugf("Patch request url: %s , body:\n%s", r.endpoint.String(), string(prettyprint(json)))
+	}
+
+	request, err := http.NewRequest("PATCH", r.endpoint.String(), bytes.NewBuffer(json))
+	if err != nil {
+		return nil, -1, err
+	}
+	request.Header.Set("Content-Type", "application/merge-json-patch+json")
+	response, err := r.client.Do(request)
+	if err != nil {
+		return nil, -1, err
+	}
+	defer response.Body.Close()
+
+	body, _ := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return body, response.StatusCode, err
+}
+
 func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 	r.endpoint.Path = urlPath
 
