@@ -112,7 +112,7 @@ func (k *kubeClientImpl) DeleteService(namespace, service string) error {
 	return nil
 }
 
-// DeleteService deletes a service
+// DeleteReplicationController deletes a replication controller
 func (k *kubeClientImpl) DeleteReplicationController(namespace, controller string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	_, status, err := k.service.Delete(path)
