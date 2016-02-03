@@ -116,10 +116,7 @@ func getDeployedServicesForKubeware(m template.Metadata) ([]string, error) {
 	kube, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 
-	labelSelector := map[string]string{
-		"kubeware":         m.Name,
-		"kubeware-version": m.Version,
-	}
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", m.Name, m.Version)
 	servicesJSON, err := kube.GetServices(labelSelector)
 	utils.CheckError(err)
 
@@ -144,10 +141,7 @@ func getDeployedControllersForKubeware(m template.Metadata) ([]string, error) {
 	kube, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 
-	labelSelector := map[string]string{
-		"kubeware":         m.Name,
-		"kubeware-version": m.Version,
-	}
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", m.Name, m.Version)
 	controllersJSON, err := kube.GetControllers(labelSelector)
 	utils.CheckError(err)
 

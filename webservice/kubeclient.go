@@ -3,15 +3,14 @@ package webservice
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 
 	"github.com/flexiant/kdeploy/utils"
 )
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetControllers(map[string]string) (string, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(map[string]string) (string, error)    // GetServices gets deployed services that match the labels specified
+	GetControllers(...string) (string, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(...string) (string, error)    // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
 	CreateService(string, []byte) (string, error)
 	DeleteReplicationController(string, string) error
@@ -40,14 +39,13 @@ func NewKubeClient() (KubeClient, error) {
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *kubeClientImpl) GetServices(labelSelector map[string]string) (string, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClientImpl) GetServices(labelSelector ...string) (string, error) {
+	if len(labelSelector) > 1 {
+		return "", fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/services", params)
 	if err != nil {
@@ -57,14 +55,13 @@ func (k *kubeClientImpl) GetServices(labelSelector map[string]string) (string, e
 }
 
 // GetServices retrieves a json representation of existing controllers
-func (k *kubeClientImpl) GetControllers(labelSelector map[string]string) (string, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClientImpl) GetControllers(labelSelector ...string) (string, error) {
+	if len(labelSelector) > 1 {
+		return "", fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/replicationcontrollers", params)
 	if err != nil {

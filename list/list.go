@@ -226,7 +226,7 @@ func getServices() (*serviceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	jsonServices, err := kube.GetServices(nil)
+	jsonServices, err := kube.GetServices()
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func getControllers() (*controllerList, error) {
 	if err != nil {
 		return nil, err
 	}
-	jsonControllers, err := kube.GetControllers(nil)
+	jsonControllers, err := kube.GetControllers()
 	if err != nil {
 		return nil, err
 	}
