@@ -37,6 +37,8 @@ func PrepareFlags(c *cli.Context) error {
 
 // struct representing an item to be listed
 type Kube struct {
+	Name        string
+	Version     string
 	Services    []map[string]interface{}
 	Controllers []map[string]interface{}
 }
@@ -172,7 +174,8 @@ func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube
 			// check if kube already in map
 			if _, ok := kmap[kubeName]; !ok {
 				// if not, create it
-				kmap[kubeName] = Kube{}
+				kubeVersion := service.Metadata.Labels["kubeware-version"]
+				kmap[kubeName] = Kube{Name: kubeName, Version: kubeVersion}
 			}
 			// add the service to the kube's list of services
 			kube := kmap[kubeName]
@@ -185,7 +188,8 @@ func buildKubeList(svcList *serviceList, rcList *controllerList) map[string]Kube
 			// check if kube already in map
 			if _, ok := kmap[kubeName]; !ok {
 				// if not, create it
-				kmap[kubeName] = Kube{}
+				kubeVersion := controller.Metadata.Labels["kubeware-version"]
+				kmap[kubeName] = Kube{Name: kubeName, Version: kubeVersion}
 			}
 			// add the controller to the kube's list of controllers
 			kube := kmap[kubeName]

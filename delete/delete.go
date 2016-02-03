@@ -113,25 +113,23 @@ func deleteControllers(controllerNames []string) error {
 }
 
 func getDeployedServicesForKubeware(m template.Metadata) ([]string, error) {
+	kube, err := webservice.NewKubeClient()
+	utils.CheckError(err)
 
-	type ServiceList struct {
+	labelSelector := map[string]string{
+		"kubeware":         m.Name,
+		"kubeware-version": m.Version,
+	}
+	servicesJSON, err := kube.GetServices(labelSelector)
+	utils.CheckError(err)
+
+	var svcList struct {
 		Items []struct {
 			Metadata struct {
 				Name string
 			}
 		}
 	}
-
-	kube, err := webservice.NewKubeClient()
-	utils.CheckError(err)
-
-	labelSelector := map[string]string{
-		"kubeware": m.Name,
-	}
-	servicesJSON, err := kube.GetServices(labelSelector)
-	utils.CheckError(err)
-
-	var svcList ServiceList
 	err = json.Unmarshal([]byte(servicesJSON), &svcList)
 	utils.CheckError(err)
 
@@ -143,25 +141,23 @@ func getDeployedServicesForKubeware(m template.Metadata) ([]string, error) {
 }
 
 func getDeployedControllersForKubeware(m template.Metadata) ([]string, error) {
+	kube, err := webservice.NewKubeClient()
+	utils.CheckError(err)
 
-	type ControllersList struct {
+	labelSelector := map[string]string{
+		"kubeware":         m.Name,
+		"kubeware-version": m.Version,
+	}
+	controllersJSON, err := kube.GetControllers(labelSelector)
+	utils.CheckError(err)
+
+	var rcList struct {
 		Items []struct {
 			Metadata struct {
 				Name string
 			}
 		}
 	}
-
-	kube, err := webservice.NewKubeClient()
-	utils.CheckError(err)
-
-	labelSelector := map[string]string{
-		"kubeware": m.Name,
-	}
-	controllersJSON, err := kube.GetControllers(labelSelector)
-	utils.CheckError(err)
-
-	var rcList ControllersList
 	err = json.Unmarshal([]byte(controllersJSON), &rcList)
 	utils.CheckError(err)
 
