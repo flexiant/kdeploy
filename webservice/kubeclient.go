@@ -11,8 +11,10 @@ import (
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetControllers(...string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(...string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
+	GetControllers(...string) (*models.ControllerList, error)                     // GetControllers gets deployed replication controllers that match the labels specified
+	GetControllersForNamespace(string, ...string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(...string) (*models.ServiceList, error)                           // GetServices gets deployed services that match the labels specified
+	GetServicesForNamespace(string, ...string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
 	CreateReplicaControllers([]string) error
 	CreateService(string, []byte) (string, error)
@@ -22,8 +24,6 @@ type KubeClient interface {
 	SetSpecReplicas(string, string, uint) error
 	GetSpecReplicas(string, string) (uint, error)
 	GetStatusReplicas(string, string) (uint, error)
-	DeleteServices(namespace string, serviceList *models.ServiceList) error
-	DeleteControllers(namespace string, controllerList *models.ControllerList) error
 }
 
 // kubeClient implements KubeClient interface
@@ -61,6 +61,23 @@ func (k *kubeClient) GetServices(labelSelector ...string) (*models.ServiceList, 
 	return models.NewServicesJSON(string(json))
 }
 
+func (k *kubeClient) GetServicesForNamespace(namespace string, labelSelector ...string) (*models.ServiceList, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
+	}
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/services", namespace)
+	json, _, err := k.service.Get(path, params)
+	if err != nil {
+		return nil, fmt.Errorf("error getting services: %s", err)
+	}
+
+	return models.NewServicesJSON(string(json))
+}
+
 // GetServices retrieves a json representation of existing controllers
 func (k *kubeClient) GetControllers(labelSelector ...string) (*models.ControllerList, error) {
 	if len(labelSelector) > 1 {
@@ -71,6 +88,23 @@ func (k *kubeClient) GetControllers(labelSelector ...string) (*models.Controller
 		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/replicationcontrollers", params)
+	if err != nil {
+		return nil, fmt.Errorf("error getting replication controllers: %s", err)
+	}
+
+	return models.NewControllersJSON(string(json))
+}
+
+func (k *kubeClient) GetControllersForNamespace(namespace string, labelSelector ...string) (*models.ControllerList, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
+	}
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/replicationcontrollers", namespace)
+	json, _, err := k.service.Get(path, params)
 	if err != nil {
 		return nil, fmt.Errorf("error getting replication controllers: %s", err)
 	}
@@ -107,12 +141,15 @@ func (k *kubeClient) CreateService(namespace string, svcjson []byte) (string, er
 // DeleteService deletes a service
 func (k *kubeClient) DeleteService(namespace, service string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, service)
+	fmt.Printf("Deleting service: %s", path)
 	_, status, err := k.service.Delete(path)
 	if err != nil {
+		fmt.Printf("error deleting service: %s", err)
 		return fmt.Errorf("error deleting service: %s", err)
 	}
 	if status != 200 {
-		return fmt.Errorf("error deleting service: wrong http status code: %v", status)
+		fmt.Printf("wrong http status code: %v", status)
+		return fmt.Errorf("wrong http status code: %v", status)
 	}
 	return nil
 }
@@ -172,34 +209,12 @@ func (k *kubeClient) getController(namespace, controller string) (string, error)
 func (k *kubeClient) SetSpecReplicas(namespace, controller string, replicas uint) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	body := jsonPatchSpecReplicas(replicas)
-	_, status, err := k.service.Patch(path, []byte(body))
+	resp, status, err := k.service.Patch(path, []byte(body))
 	if err != nil {
 		return err
 	}
 	if status != 200 {
-		return fmt.Errorf("error creating service: wrong http status code: %v", status)
-	}
-	return nil
-}
-
-// Deletes a list of Services
-func (k *kubeClient) DeleteServices(namespace string, serviceList *models.ServiceList) error {
-	for _, service := range serviceList.Items {
-		err := k.DeleteService(namespace, service.Metadata.Name)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Deletes a list of Controllers
-func (k *kubeClient) DeleteControllers(namespace string, controllerList *models.ControllerList) error {
-	for _, controller := range controllerList.Items {
-		err := k.DeleteService(namespace, controller.Metadata.Name)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("wrong http status code: %v (%s)", status, resp)
 	}
 	return nil
 }
@@ -207,11 +222,12 @@ func (k *kubeClient) DeleteControllers(namespace string, controllerList *models.
 func jsonPatchSpecReplicas(nr uint) []byte {
 	var patch struct {
 		Spec struct {
-			Replicas uint
-		}
+			Replicas uint `json:"replicas"`
+		} `json:"spec"`
 	}
 	patch.Spec.Replicas = nr
-	data, _ := json.Marshal(patch)
+	data, err := json.Marshal(patch)
+	utils.CheckError(err)
 	return data
 }
 

@@ -19,11 +19,29 @@ func WaitZeroReplicasDeletionStrategy(k webservice.KubeClient) DeletionStrategy 
 	return &waitZeroReplicas{k}
 }
 
-func (zr *waitZeroReplicas) DeleteService(namespace string, name string) error {
+// TODO: Could do all this in parallel
+func (zr *waitZeroReplicas) Delete(namespace string, services, replicationControllers []string) error {
+	for _, svcName := range services {
+		err := zr.deleteService(namespace, svcName)
+		if err != nil {
+			return err
+		}
+	}
+	for _, rcName := range replicationControllers {
+		err := zr.deleteReplicationController(namespace, rcName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (zr *waitZeroReplicas) deleteService(namespace string, name string) error {
+	log.Debugf("wzr deleteService %s", name)
 	return zr.kubeClient.DeleteService(namespace, name)
 }
 
-func (zr *waitZeroReplicas) DeleteReplicationController(namespace string, name string) error {
+func (zr *waitZeroReplicas) deleteReplicationController(namespace string, name string) error {
 	// set replicas number to zero
 	err := zr.kubeClient.SetSpecReplicas(namespace, name, 0)
 	if err != nil {
