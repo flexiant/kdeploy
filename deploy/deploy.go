@@ -13,50 +13,6 @@ import (
 	"github.com/flexiant/kdeploy/webservice"
 )
 
-func Flags() []cli.Flag {
-	return []cli.Flag{
-		cli.StringFlag{
-			Name:   "attribute, a",
-			Usage:  "Attribute List",
-			EnvVar: "KDEPLOY_ATTRIBUTE",
-		},
-		cli.StringFlag{
-			Name:   "kubeware, k",
-			Usage:  "Kubeware path",
-			EnvVar: "KDEPLOY_KUBEWARE",
-		},
-		cli.StringFlag{
-			Name:   "namespace, n",
-			Usage:  "Namespace which to deploy Kubeware",
-			Value:  "default",
-			EnvVar: "KDEPLOY_NAMESPACE",
-		},
-		cli.BoolFlag{
-			Name:   "dry-run, d",
-			Usage:  "Dry Run of Deploy used for debugging options",
-			EnvVar: "KDEPLOY_DRYRUN",
-		},
-	}
-}
-
-func PrepareFlags(c *cli.Context) error {
-	if c.String("attribute") != "" {
-		os.Setenv("KDEPLOY_ATTRIBUTE", c.String("attribute"))
-	}
-
-	if c.String("kubeware") != "" {
-		os.Setenv("KDEPLOY_KUBEWARE", c.String("kubeware"))
-	}
-
-	if c.Bool("dry-run") {
-		os.Setenv("KDEPLOY_DRYRUN", "1")
-	}
-
-	os.Setenv("KDEPLOY_NAMESPACE", c.String("namespace"))
-
-	return nil
-}
-
 func CmdDeploy(c *cli.Context) {
 	// utils.CheckRequiredFlags(c, []string{"attribute", "kubeware", "namespace"})
 	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
@@ -80,11 +36,11 @@ func CmdDeploy(c *cli.Context) {
 	utils.CheckError(err)
 	// create each of the services
 	log.Debugf("Creating services")
-	err = createServices(servicesSpecs)
+	err = webservice.CreateServices(servicesSpecs)
 	utils.CheckError(err)
 	// create each of the controllers
 	log.Debugf("Creating controllers")
-	err = createControllers(controllersSpecs)
+	err = webservice.CreateControllers(controllersSpecs)
 	utils.CheckError(err)
 
 	fmt.Printf("Kubeware %s from %s has been deployed", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))
@@ -104,32 +60,4 @@ func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
 	utils.CheckError(err)
 
 	return attributes
-}
-
-func createServices(svcSpecs []string) error {
-	kube, err := webservice.NewKubeClient()
-	if err != nil {
-		return err
-	}
-	for _, spec := range svcSpecs {
-		_, err = kube.CreateService(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
-		if err != nil {
-			return fmt.Errorf("error creating services: %v", err)
-		}
-	}
-	return nil
-}
-
-func createControllers(rcSpecs []string) error {
-	kube, err := webservice.NewKubeClient()
-	if err != nil {
-		return fmt.Errorf("error creating kube client: %v", err)
-	}
-	for _, spec := range rcSpecs {
-		_, err = kube.CreateReplicaController(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
-		if err != nil {
-			return fmt.Errorf("error creating replication controllers: %v", err)
-		}
-	}
-	return nil
 }
