@@ -2,6 +2,8 @@ package utils
 
 import (
 	"archive/zip"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -10,7 +12,13 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/go-errors/errors"
 )
+
+func GetMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
 
 // CheckRequiredFlags checks for required flags, and show usage if requirements not met
 func CheckRequiredFlags(c *cli.Context, flags []string) {
@@ -35,7 +43,11 @@ func FileExists(name string) bool {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		if os.Getenv("DEBUG") == "1" {
+			log.Fatal(err.(*errors.Error).ErrorStack())
+		} else {
+			log.Fatal(err)
+		}
 	}
 }
 

@@ -11,8 +11,8 @@ import (
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetControllers(...string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(...string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
+	GetControllers(...string) (*[]models.ReplicaController, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(...string) (*[]models.Service, error)              // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
 	CreateReplicaControllers([]string) error
 	CreateService(string, []byte) (string, error)
@@ -22,8 +22,8 @@ type KubeClient interface {
 	SetSpecReplicas(string, string, uint) error
 	GetSpecReplicas(string, string) (uint, error)
 	GetStatusReplicas(string, string) (uint, error)
-	DeleteServices(namespace string, serviceList *models.ServiceList) error
-	DeleteControllers(namespace string, controllerList *models.ControllerList) error
+	DeleteServices(namespace string, serviceList *[]models.Service) error
+	DeleteControllers(namespace string, controllerList *[]models.ReplicaController) error
 }
 
 // kubeClient implements KubeClient interface
@@ -45,7 +45,7 @@ func NewKubeClient() (KubeClient, error) {
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *kubeClient) GetServices(labelSelector ...string) (*models.ServiceList, error) {
+func (k *kubeClient) GetServices(labelSelector ...string) (*[]models.Service, error) {
 	if len(labelSelector) > 1 {
 		return nil, fmt.Errorf("too many parameters")
 	}
@@ -62,7 +62,7 @@ func (k *kubeClient) GetServices(labelSelector ...string) (*models.ServiceList, 
 }
 
 // GetServices retrieves a json representation of existing controllers
-func (k *kubeClient) GetControllers(labelSelector ...string) (*models.ControllerList, error) {
+func (k *kubeClient) GetControllers(labelSelector ...string) (*[]models.ReplicaController, error) {
 	if len(labelSelector) > 1 {
 		return nil, fmt.Errorf("too many parameters")
 	}
@@ -183,8 +183,8 @@ func (k *kubeClient) SetSpecReplicas(namespace, controller string, replicas uint
 }
 
 // Deletes a list of Services
-func (k *kubeClient) DeleteServices(namespace string, serviceList *models.ServiceList) error {
-	for _, service := range serviceList.Items {
+func (k *kubeClient) DeleteServices(namespace string, serviceList *[]models.Service) error {
+	for _, service := range *serviceList {
 		err := k.DeleteService(namespace, service.Metadata.Name)
 		if err != nil {
 			return err
@@ -194,8 +194,8 @@ func (k *kubeClient) DeleteServices(namespace string, serviceList *models.Servic
 }
 
 // Deletes a list of Controllers
-func (k *kubeClient) DeleteControllers(namespace string, controllerList *models.ControllerList) error {
-	for _, controller := range controllerList.Items {
+func (k *kubeClient) DeleteControllers(namespace string, controllerList *[]models.ReplicaController) error {
+	for _, controller := range *controllerList {
 		err := k.DeleteService(namespace, controller.Metadata.Name)
 		if err != nil {
 			return err

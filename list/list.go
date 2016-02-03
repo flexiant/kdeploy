@@ -32,23 +32,23 @@ func CmdList(c *cli.Context) {
 
 		if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
 			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tVERSION\tSVC\tRC\tUP\tFQDN\r")
-			for kubewareName, kubeware := range kubeList {
+			for _, kubeware := range kubeList {
 				for _, service := range kubeware.Services {
-					if service["ExternalFQDN"] != nil {
-						fqdns = append(fqdns, service["ExternalFQDN"].(string))
+					if service.GetFQDN() != "" {
+						fqdns = append(fqdns, service.GetFQDN())
 					}
 				}
-				for _, controller := range kubeware.Controllers {
-					up = up + controller["Up"].(int)
+				for _, controller := range kubeware.ReplicaControllers {
+					up = up + controller.GetUpStats()
 				}
 				if len(kubeware.Services) > 0 {
 					up = up / len(kubeware.Services)
 				}
 
 				if len(fqdns) > 0 {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d%%\t%s\n", kubewareName, kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d%%\t%s\n", kubeware.GetKube(), kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), len(kubeware.ReplicaControllers), up, strings.Join(fqdns, ","))
 				} else {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\t%d\n", kubewareName, kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), up, len(kubeware.Controllers))
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\t%d\n", kubeware.GetKube(), kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), up, len(kubeware.ReplicaControllers))
 				}
 				up = 0
 				fqdns = []string{}
@@ -59,14 +59,13 @@ func CmdList(c *cli.Context) {
 		}
 		if c.Bool("all") || c.Bool("services") {
 			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tSVC\tINTERNAL IP\tFQDN\r")
-			for kubewareName, kubeware := range kubeList {
+			for _, kubeware := range kubeList {
 				for _, service := range kubeware.Services {
-					if service["ExternalFQDN"] != nil {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", kubewareName, service["Namespace"], service["Name"], service["ClusterIP"], service["ExternalFQDN"])
+					if service.GetFQDN() != "" {
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", kubeware.GetKube(), service.GetNamespace(), service.GetName(), service.GetInternalIp(), service.GetFQDN())
 					} else {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubewareName, service["Namespace"], service["Name"], service["ClusterIP"])
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", kubeware.GetKube(), service.GetNamespace(), service.GetName(), service.GetInternalIp())
 					}
-
 				}
 			}
 		}
@@ -75,9 +74,9 @@ func CmdList(c *cli.Context) {
 		}
 		if c.Bool("all") || c.Bool("controllers") {
 			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tRC\tREPLICAS\tUP\r")
-			for kubewareName, kubeware := range kubeList {
-				for _, controller := range kubeware.Controllers {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\n", kubewareName, controller["Namespace"], controller["Name"], controller["Replicas"], controller["Up"])
+			for _, kubeware := range kubeList {
+				for _, replicaController := range kubeware.ReplicaControllers {
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\n", kubeware.GetKube(), kubeware.GetNamespace(), replicaController.GetName(), replicaController.GetReplicas(), replicaController.GetUpStats())
 				}
 			}
 		}
