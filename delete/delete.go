@@ -24,9 +24,7 @@ func CmdDelete(c *cli.Context) {
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 
-	labelSelector := map[string]string{
-		"kubeware": md.Name,
-	}
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", md.Name, md.Version)
 
 	// get services which are currently deployed as part of the kube
 	serviceList, err := kubernetes.GetServices(labelSelector)

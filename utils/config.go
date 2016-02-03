@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -68,12 +69,34 @@ func ReadConfig() (*Config, error) {
 		return cfg, nil
 	}
 
-	cfg, err = ReadConfigFrom("~/.kdeploy.yml")
+	home, err := homedir.Dir()
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get home dir for current user: %s", err.Error())
+	}
+
+	cfg, err = ReadConfigFrom(filepath.Join(home, ".kdeploy.yml"))
 	if err == nil {
 		return cfg, nil
 	}
 
-	return nil, err
+	// if none of them is present, use kubeconfig
+	if os.Getenv("KUBECONFIG") != "" {
+		cfg, err := ReadKubeConfigFrom(os.Getenv("KUBECONFIG"))
+		if err != nil {
+			return cfg, nil
+		}
+	}
+
+	cfg, err = ReadKubeConfigFrom(filepath.Join(home, ".kube/config"))
+	if err == nil {
+		return cfg, nil
+	}
+
+	return nil, nil
+}
+
+func ReadKubeConfigFrom(path string) (*Config, error) {
+	return nil, nil
 }
 
 func ReadConfigFrom(path string) (*Config, error) {

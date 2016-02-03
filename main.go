@@ -83,6 +83,12 @@ func main() {
 			Value:  config.Path,
 			Usage:  "Kdeploy Config File",
 		},
+		cli.StringFlag{
+			EnvVar: "KUBECONFIG",
+			Name:   "kubeconfig",
+			Value:  config.Path,
+			Usage:  "Kubeconfig client file",
+		},
 	}
 
 	app.Commands = []cli.Command{

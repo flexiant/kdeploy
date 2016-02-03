@@ -3,7 +3,6 @@ package webservice
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 
 	"github.com/flexiant/kdeploy/models"
@@ -12,8 +11,8 @@ import (
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetControllers(map[string]string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(map[string]string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
+	GetControllers(...string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(...string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
 	CreateService(string, []byte) (string, error)
 	DeleteReplicationController(string, string) error
@@ -44,14 +43,13 @@ func NewKubeClient() (KubeClient, error) {
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *kubeClient) GetServices(labelSelector map[string]string) (*models.ServiceList, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClient) GetServices(labelSelector ...string) (*models.ServiceList, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/services", params)
 	if err != nil {
@@ -62,14 +60,13 @@ func (k *kubeClient) GetServices(labelSelector map[string]string) (*models.Servi
 }
 
 // GetServices retrieves a json representation of existing controllers
-func (k *kubeClient) GetControllers(labelSelector map[string]string) (*models.ControllerList, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClient) GetControllers(labelSelector ...string) (*models.ControllerList, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/replicationcontrollers", params)
 	if err != nil {
@@ -118,7 +115,6 @@ func (k *kubeClient) DeleteService(namespace, service string) error {
 	return nil
 }
 
-// DeleteService deletes a service
 func (k *kubeClient) DeleteReplicationController(namespace, controller string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	_, status, err := k.service.Delete(path)

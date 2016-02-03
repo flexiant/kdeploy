@@ -149,7 +149,7 @@ func (m Metadata) parseTemplates(templates map[string]string, attributes digger.
 		if err != nil {
 			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
 		}
-		err = addKubewareLabel(m.Name, specMap)
+		err = addKubewareLabel(m.Name, m.Version, specMap)
 		if err != nil {
 			return nil, fmt.Errorf("error adding kubeware labels to %s: %v", templateFile, err)
 		}
@@ -176,13 +176,17 @@ func parseTemplate(templateFile string, attributes digger.Digger) (map[string]in
 	return normalizedMap.(map[string]interface{}), nil
 }
 
-func addKubewareLabel(name string, specmap map[string]interface{}) error {
+func addKubewareLabel(name, version string, specmap map[string]interface{}) error {
 	metadata := specmap["metadata"].(map[string]interface{})
 	if metadata["labels"] != nil {
 		labels := metadata["labels"].(map[string]interface{})
 		labels["kubeware"] = name
+		labels["kubeware-version"] = version
 	} else {
-		metadata["labels"] = map[string]string{"kubeware": name}
+		metadata["labels"] = map[string]string{
+			"kubeware":         name,
+			"kubeware-version": version,
+		}
 	}
 
 	return nil
