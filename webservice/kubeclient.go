@@ -14,7 +14,9 @@ type KubeClient interface {
 	GetControllers(...string) (*models.ControllerList, error) // GetControllers gets deployed replication controllers that match the labels specified
 	GetServices(...string) (*models.ServiceList, error)       // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
+	CreateReplicaControllers([]string) error
 	CreateService(string, []byte) (string, error)
+	CreateServices([]string) error
 	DeleteReplicationController(string, string) error
 	DeleteService(string, string) error
 	SetSpecReplicas(string, string, uint) error
@@ -213,13 +215,9 @@ func jsonPatchSpecReplicas(nr uint) []byte {
 	return data
 }
 
-func CreateServices(svcSpecs []string) error {
-	kube, err := NewKubeClient()
-	if err != nil {
-		return err
-	}
+func (k *kubeClient) CreateServices(svcSpecs []string) error {
 	for _, spec := range svcSpecs {
-		_, err = kube.CreateService(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
+		_, err := k.CreateService(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
 		if err != nil {
 			return fmt.Errorf("error creating services: %v", err)
 		}
@@ -227,13 +225,9 @@ func CreateServices(svcSpecs []string) error {
 	return nil
 }
 
-func CreateControllers(rcSpecs []string) error {
-	kube, err := NewKubeClient()
-	if err != nil {
-		return fmt.Errorf("error creating kube client: %v", err)
-	}
+func (k *kubeClient) CreateReplicaControllers(rcSpecs []string) error {
 	for _, spec := range rcSpecs {
-		_, err = kube.CreateReplicaController(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
+		_, err := k.CreateReplicaController(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
 		if err != nil {
 			return fmt.Errorf("error creating replication controllers: %v", err)
 		}

@@ -34,13 +34,16 @@ func CmdDeploy(c *cli.Context) {
 	log.Debugf("Parsing controllers")
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
+	// creates Kubernetes client
+	kubernetes, err := webservice.NewKubeClient()
+	utils.CheckError(err)
 	// create each of the services
 	log.Debugf("Creating services")
-	err = webservice.CreateServices(servicesSpecs)
+	err = kubernetes.CreateServices(servicesSpecs)
 	utils.CheckError(err)
 	// create each of the controllers
 	log.Debugf("Creating controllers")
-	err = webservice.CreateControllers(controllersSpecs)
+	err = kubernetes.CreateReplicaControllers(controllersSpecs)
 	utils.CheckError(err)
 
 	fmt.Printf("Kubeware %s from %s has been deployed", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))

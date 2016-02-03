@@ -1,6 +1,10 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	log "github.com/Sirupsen/logrus"
+)
 
 // struct representing an item to be listed
 type Kube struct {
@@ -12,7 +16,16 @@ func (k *Kube) GetNamespace() string {
 	if len(k.Services) > 0 {
 		return k.Services[0]["Namespace"].(string)
 	} else if len(k.Controllers) > 0 {
-		return k.Services[0]["Namespace"].(string)
+		return k.Controllers[0]["Namespace"].(string)
+	}
+	return ""
+}
+
+func (k *Kube) GetVersion() string {
+	if len(k.Services) > 0 {
+		return k.Services[0]["Version"].(string)
+	} else if len(k.Controllers) > 0 {
+		return k.Controllers[0]["Version"].(string)
 	}
 	return ""
 }
@@ -94,6 +107,7 @@ func buildServiceRecord(service serviceItem) map[string]interface{} {
 	sr := map[string]interface{}{}
 	sr["Name"] = service.Metadata.Name
 	sr["Namespace"] = service.Metadata.Namespace
+	sr["Version"] = service.Metadata.Labels["kubeware-version"]
 	sr["CreationDate"] = service.Metadata.CreationTimestamp
 	sr["ClusterIP"] = service.Spec.ClusterIP
 	if len(service.Status.LoadBalancer.Ingress) > 0 {
@@ -107,11 +121,13 @@ func buildControllerRecord(controller controllerItem) map[string]interface{} {
 	sr["Name"] = controller.Metadata.Name
 	sr["Replicas"] = controller.Status.Replicas
 	sr["Namespace"] = controller.Metadata.Namespace
+	sr["Version"] = controller.Metadata.Labels["kubeware-version"]
 	sr["Up"] = (controller.Status.Replicas / controller.Spec.Replicas) * 100
 	return sr
 }
 
 func NewControllersJSON(jsonStr string) (*ControllerList, error) {
+	log.Debugf("New Controller: %s", jsonStr)
 	var rl ControllerList
 	err := json.Unmarshal([]byte(jsonStr), &rl)
 	if err != nil {
@@ -121,6 +137,7 @@ func NewControllersJSON(jsonStr string) (*ControllerList, error) {
 }
 
 func NewServicesJSON(jsonStr string) (*ServiceList, error) {
+	log.Debugf("New Service: %s", jsonStr)
 	var sl ServiceList
 	err := json.Unmarshal([]byte(jsonStr), &sl)
 	if err != nil {

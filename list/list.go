@@ -28,10 +28,10 @@ func CmdList(c *cli.Context) {
 	kubeList := models.BuildKubeList(serviceList, controllersList)
 
 	if len(kubeList) > 0 {
-		w := tabwriter.NewWriter(os.Stdout, 15, 1, 3, ' ', 0)
+		w := tabwriter.NewWriter(os.Stdout, 10, 1, 5, ' ', 0)
 
 		if c.Bool("all") || (!c.Bool("services") && !c.Bool("controllers")) {
-			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tSVC\tRC\tUP\tFQDN\r")
+			fmt.Fprintln(w, "KUBEWARE\tNAMESPACE\tVERSION\tSVC\tRC\tUP\tFQDN\r")
 			for kubewareName, kubeware := range kubeList {
 				for _, service := range kubeware.Services {
 					if service["ExternalFQDN"] != nil {
@@ -46,9 +46,9 @@ func CmdList(c *cli.Context) {
 				}
 
 				if len(fqdns) > 0 {
-					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d%%\t%s\n", kubewareName, kubeware.GetNamespace(), len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d%%\t%s\n", kubewareName, kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), len(kubeware.Controllers), up, strings.Join(fqdns, ","))
 				} else {
-					fmt.Fprintf(w, "%s\t%s\t%d\t%d%%\t%d\n", kubewareName, kubeware.GetNamespace(), len(kubeware.Services), up, len(kubeware.Controllers))
+					fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d%%\t%d\n", kubewareName, kubeware.GetNamespace(), kubeware.GetVersion(), len(kubeware.Services), up, len(kubeware.Controllers))
 				}
 				up = 0
 				fqdns = []string{}
