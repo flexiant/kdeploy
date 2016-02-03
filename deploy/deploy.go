@@ -20,19 +20,19 @@ func CmdDeploy(c *cli.Context) {
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
 
-	md := template.ParseMetadata(localKubePath)
-	defaults, err := md.AttributeDefaults()
+	metadata := template.ParseMetadata(localKubePath)
+	defaults, err := metadata.AttributeDefaults()
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
 	log.Debugf("Building attributes")
 	attributes := buildAttributes(c.String("attribute"), defaults)
 	// get list of services and parse each one
 	log.Debugf("Parsing services")
-	servicesSpecs, err := md.ParseServices(attributes)
+	servicesSpecs, err := metadata.ParseServices(attributes)
 	utils.CheckError(err)
 	// get list of replica controllers and parse each one
 	log.Debugf("Parsing controllers")
-	controllersSpecs, err := md.ParseControllers(attributes)
+	controllersSpecs, err := metadata.ParseControllers(attributes)
 	utils.CheckError(err)
 	// creates Kubernetes client
 	kubernetes, err := webservice.NewKubeClient()
@@ -46,7 +46,7 @@ func CmdDeploy(c *cli.Context) {
 	err = kubernetes.CreateReplicaControllers(controllersSpecs)
 	utils.CheckError(err)
 
-	fmt.Printf("Kubeware %s from %s has been deployed", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))
+	fmt.Printf("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
 }
 
 func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
