@@ -27,9 +27,12 @@ func CmdUpgrade(c *cli.Context) {
 	namespace := os.Getenv("KDEPLOY_NAMESPACE")
 	// labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", md.Name, md.Version)
 
-	// TODO: Check if version equal or newer one already exists, error if so
+	// Check if kubeware already installed, error if it's not
+	version, err := kubernetes.FindDeployedKubewareVersion(namespace, md.Name)
+	utils.CheckError(err)
+	log.Infof("Found version %s of %s.%s", version, namespace, md.Name)
 
-	// TODO: Check if older version exists, error if it doesn't
+	// TODO: Check if version equal or newer one already exists, error if so
 
 	// build attributes merging "role list" to defaults
 	log.Debugf("Building attributes")

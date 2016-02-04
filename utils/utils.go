@@ -12,7 +12,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/go-errors/errors"
 )
 
 func GetMD5Hash(text string) string {
@@ -44,7 +43,7 @@ func FileExists(name string) bool {
 func CheckError(err error) {
 	if err != nil {
 		if os.Getenv("DEBUG") == "1" {
-			log.Fatal(err.(*errors.Error).ErrorStack())
+			log.Fatal(err)
 		} else {
 			log.Fatal(err)
 		}

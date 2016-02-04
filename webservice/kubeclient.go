@@ -11,6 +11,7 @@ import (
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
+	FindDeployedKubewareVersion(string, string) (string, error)
 	GetControllers(...string) (*[]models.ReplicaController, error)                     // GetControllers gets deployed replication controllers that match the labels specified
 	GetControllersForNamespace(string, ...string) (*[]models.ReplicaController, error) // GetControllers gets deployed replication controllers that match the labels specified
 	GetServices(...string) (*[]models.Service, error)                                  // GetServices gets deployed services that match the labels specified
@@ -141,14 +142,11 @@ func (k *kubeClient) CreateService(namespace string, svcjson []byte) (string, er
 // DeleteService deletes a service
 func (k *kubeClient) DeleteService(namespace, service string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, service)
-	fmt.Printf("Deleting service: %s", path)
 	_, status, err := k.service.Delete(path)
 	if err != nil {
-		fmt.Printf("error deleting service: %s", err)
 		return fmt.Errorf("error deleting service: %s", err)
 	}
 	if status != 200 {
-		fmt.Printf("wrong http status code: %v", status)
 		return fmt.Errorf("wrong http status code: %v", status)
 	}
 	return nil
@@ -249,4 +247,49 @@ func (k *kubeClient) CreateReplicaControllers(rcSpecs []string) error {
 		}
 	}
 	return nil
+}
+
+func (k *kubeClient) FindDeployedKubewareVersion(namespace, kubename string) (string, error) {
+	versions := map[string]string{}
+	services, err := k.GetServicesForNamespace(namespace)
+	if err != nil {
+		return "", err
+	}
+	controllers, err := k.GetControllersForNamespace(namespace)
+	if err != nil {
+		return "", err
+	}
+	// Iterate over services and collect versions
+	for _, s := range *services {
+		n := s.GetKube()
+		v := s.GetVersion()
+		prev, found := versions[n]
+		// Check if version already found
+		if !found {
+			versions[n] = v
+		}
+		// Check if a different version was already found
+		if found && prev != v {
+			return "", fmt.Errorf("found more than one version of the same Kubeware (%s.%s %s/%s)", namespace, kubename, prev, v)
+		}
+	}
+	// Iterate over controllers and collect versions
+	for _, c := range *controllers {
+		n := c.GetKube()
+		v := c.GetVersion()
+		prev, found := versions[n]
+		// Check if version already found
+		if !found {
+			versions[n] = v
+		}
+		// Check if a different version was already found
+		if found && prev != v {
+			return "", fmt.Errorf("found more than one version of the same Kubeware (%s.%s %s/%s)", namespace, kubename, prev, v)
+		}
+	}
+	v, found := versions[kubename]
+	if !found {
+		return "", fmt.Errorf("could not find kubeware '%s.%s'", namespace, kubename)
+	}
+	return v, nil
 }

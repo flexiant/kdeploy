@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/kdeploy/utils"
 )
 
@@ -65,7 +64,6 @@ func (svc *Service) GetInternalIp() string {
 }
 
 func NewServicesJSON(jsonStr string) (*[]Service, error) {
-	log.Debugf("New Service: %s", jsonStr)
 	type ServiceList struct {
 		Items []Service
 	}

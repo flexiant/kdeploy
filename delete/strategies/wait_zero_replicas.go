@@ -37,7 +37,6 @@ func (zr *waitZeroReplicas) Delete(namespace string, services, replicationContro
 }
 
 func (zr *waitZeroReplicas) deleteService(namespace string, name string) error {
-	log.Debugf("wzr deleteService %s", name)
 	return zr.kubeClient.DeleteService(namespace, name)
 }
 
