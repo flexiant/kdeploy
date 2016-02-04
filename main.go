@@ -8,6 +8,7 @@ import (
 	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
 	"github.com/flexiant/kdeploy/list"
+	"github.com/flexiant/kdeploy/upgrade"
 	"github.com/flexiant/kdeploy/utils"
 )
 
@@ -20,6 +21,7 @@ func cmdNotFound(c *cli.Context, command string) {
 		c.App.Name,
 	)
 }
+
 func prepareFlags(c *cli.Context) error {
 
 	if c.Bool("debug") {
@@ -112,6 +114,13 @@ func main() {
 			Before: list.PrepareFlags,
 			Action: list.CmdList,
 			Flags:  list.Flags(),
+		},
+		{
+			Name:   "upgrade",
+			Usage:  "Upgrades a Kubeware to a new version",
+			Before: upgrade.PrepareFlags,
+			Action: upgrade.CmdUpgrade,
+			Flags:  upgrade.Flags(),
 		},
 	}
 

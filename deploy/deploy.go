@@ -2,17 +2,16 @@ package deploy
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
 )
 
+// CmdDeploy implements the 'deploy' command
 func CmdDeploy(c *cli.Context) {
 	// utils.CheckRequiredFlags(c, []string{"attribute", "kubeware", "namespace"})
 	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
@@ -25,7 +24,7 @@ func CmdDeploy(c *cli.Context) {
 	utils.CheckError(err)
 	// build attributes merging "role list" to defaults
 	log.Debugf("Building attributes")
-	attributes := buildAttributes(c.String("attribute"), defaults)
+	attributes := template.BuildAttributes(c.String("attribute"), defaults)
 	// get list of services and parse each one
 	log.Debugf("Parsing services")
 	servicesSpecs, err := metadata.ParseServices(attributes)
@@ -39,28 +38,12 @@ func CmdDeploy(c *cli.Context) {
 	utils.CheckError(err)
 	// create each of the services
 	log.Debugf("Creating services")
-	err = kubernetes.CreateServices(servicesSpecs)
+	err = kubernetes.CreateServices(utils.Values(servicesSpecs))
 	utils.CheckError(err)
 	// create each of the controllers
 	log.Debugf("Creating controllers")
-	err = kubernetes.CreateReplicaControllers(controllersSpecs)
+	err = kubernetes.CreateReplicaControllers(utils.Values(controllersSpecs))
 	utils.CheckError(err)
 
 	fmt.Printf("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
-}
-
-func buildAttributes(filePath string, defaults digger.Digger) digger.Digger {
-	roleList, err := ioutil.ReadFile(filePath)
-	utils.CheckError(err)
-
-	roleListDigger, err := digger.NewJSONDigger([]byte(roleList))
-	utils.CheckError(err)
-
-	attributes, err := digger.NewMultiDigger(
-		roleListDigger,
-		defaults,
-	)
-	utils.CheckError(err)
-
-	return attributes
 }

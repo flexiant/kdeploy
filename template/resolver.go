@@ -37,3 +37,19 @@ func ResolveTemplate(templatePath string, attributes digger.Digger) (string, err
 
 	return doc.String(), nil
 }
+
+func BuildAttributes(filePath string, defaults digger.Digger) digger.Digger {
+	roleList, err := ioutil.ReadFile(filePath)
+	utils.CheckError(err)
+
+	roleListDigger, err := digger.NewJSONDigger([]byte(roleList))
+	utils.CheckError(err)
+
+	attributes, err := digger.NewMultiDigger(
+		roleListDigger,
+		defaults,
+	)
+	utils.CheckError(err)
+
+	return attributes
+}

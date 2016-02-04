@@ -82,3 +82,25 @@ func Unzip(src, dest string) error {
 	}
 	return nil
 }
+
+// Keys returns the keys in a map[string]string
+func Keys(m map[string]string) []string {
+	names := make([]string, len(m))
+	i := 0
+	for key := range m {
+		names[i] = key
+		i++
+	}
+	return names
+}
+
+// Values returns the values in a map[string]string
+func Values(m map[string]string) []string {
+	vals := make([]string, len(m))
+	i := 0
+	for _, val := range m {
+		vals[i] = val
+		i++
+	}
+	return vals
+}

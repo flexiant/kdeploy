@@ -50,11 +50,11 @@ func (zr *waitZeroReplicas) deleteReplicationController(namespace string, name s
 	// wait for pods to actually be deleted
 	var n uint
 	for n = 1; n > 0; time.Sleep(1 * time.Second) {
-		log.Debugf("Waiting for all pods to be gone (%s.%s %v remaining)", namespace, name, n)
 		n, err = zr.kubeClient.GetStatusReplicas(namespace, name)
 		if err != nil {
 			return err
 		}
+		log.Debugf("Waiting for all pods to be gone (%s.%s %v remaining)", namespace, name, n)
 	}
 	// then delete the RC
 	return zr.kubeClient.DeleteReplicationController(namespace, name)

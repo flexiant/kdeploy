@@ -1,9 +1,13 @@
 package upgradeStrategies
 
-import "github.com/flexiant/kdeploy/webservice"
+import (
+	"time"
 
-// RollingUpgradeStrategy implements a rolling upgrade strategy
-type RollingUpgradeStrategy struct {
+	"github.com/flexiant/kdeploy/webservice"
+)
+
+// implements a rolling upgrade strategy
+type rolling struct {
 	TargetReplicas    uint // Total amount of new replicas desired
 	MaxReplicasExcess uint // Total amount of old + new replicas must not exceed new target number of replicas plus this number
 }
@@ -14,8 +18,8 @@ type replicationController struct {
 }
 
 // UpgradeReplicationController using a rolling upgrade strategy
-func (s *RollingUpgradeStrategy) UpgradeReplicationController(kube webservice.KubeClient, ns, oldRCid, newRCid string) error {
-	for {
+func (s *rolling) UpgradeReplicationController(kube webservice.KubeClient, ns, oldRCid, newRCid string) error {
+	for ; ; time.Sleep(1 * time.Second) {
 		// build RC objects
 		oldRC, err := buildRCObject(kube, ns, oldRCid)
 		if err != nil {
