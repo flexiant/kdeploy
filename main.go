@@ -77,12 +77,13 @@ func main() {
 			Value:  config.Connection.APIEndpoint,
 			Usage:  "Kubernetes Endpoint",
 		},
-		cli.StringFlag{
-			EnvVar: "KDEPLOY_CONFIG",
-			Name:   "kdeploy-config",
-			Value:  config.Path,
-			Usage:  "Kdeploy Config File",
-		},
+		// TODO delete
+		// cli.StringFlag{
+		// 	EnvVar: "KDEPLOY_CONFIG",
+		// 	Name:   "kdeploy-config",
+		// 	Value:  config.Path,
+		// 	Usage:  "Kdeploy Config File",
+		// },
 		cli.StringFlag{
 			EnvVar: "KUBECONFIG",
 			Name:   "kubeconfig",

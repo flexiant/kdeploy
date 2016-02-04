@@ -43,8 +43,13 @@ func CachedConfig() (*Config, error) {
 		config.Connection.APIEndpoint = os.Getenv("KUBERNETES_ENDPOINT")
 		count = count + 1
 	}
-	if os.Getenv("KDEPLOY_CONFIG") != "" {
-		config.Path = os.Getenv("KDEPLOY_CONFIG")
+	// TODO delete
+	// if os.Getenv("KDEPLOY_CONFIG") != "" {
+	// 	config.Path = os.Getenv("KDEPLOY_CONFIG")
+	// 	count = count + 1
+	// }
+	if os.Getenv("KUBECONFIG") != "" {
+		config.Path = os.Getenv("KUBECONFIG")
 		count = count + 1
 	}
 
@@ -57,16 +62,38 @@ func CachedConfig() (*Config, error) {
 
 func ReadConfig() (*Config, error) {
 
-	if os.Getenv("KDEPLOY_CONFIG") != "" {
-		cfg, err := ReadConfigFrom(os.Getenv("KDEPLOY_CONFIG"))
+	// TODO delete
+	// if os.Getenv("KDEPLOY_CONFIG") != "" {
+	// 	cfg, err := ReadConfigFrom(os.Getenv("KDEPLOY_CONFIG"))
+	// 	if err != nil {
+	// 		return cfg, nil
+	// 	}
+	// }
+
+	// TODO delete
+	// cfg, err := ReadConfigFrom(".kdeploy.yml")
+	// if err == nil {
+	// 	return cfg, nil
+	// }
+	//
+	// if os.Getenv("KDEPLOY_CONFIG") != "" {
+	// 	cfg, err := ReadConfigFrom(os.Getenv("KDEPLOY_CONFIG"))
+	// 	if err != nil {
+	// 		return cfg, nil
+	// 	}
+	// }
+
+	// TODO delete
+	// cfg, err = ReadConfigFrom(filepath.Join(home, ".kdeploy.yml"))
+	// if err == nil {
+	// 	return cfg, nil
+	// }
+
+	if os.Getenv("KUBECONFIG") != "" {
+		cfg, err := readKubeConfigFrom(os.Getenv("KUBECONFIG"))
 		if err != nil {
 			return cfg, nil
 		}
-	}
-
-	cfg, err := ReadConfigFrom(".kdeploy.yml")
-	if err == nil {
-		return cfg, nil
 	}
 
 	home, err := homedir.Dir()
@@ -74,20 +101,7 @@ func ReadConfig() (*Config, error) {
 		return nil, fmt.Errorf("Couldn't get home dir for current user: %s", err.Error())
 	}
 
-	cfg, err = ReadConfigFrom(filepath.Join(home, ".kdeploy.yml"))
-	if err == nil {
-		return cfg, nil
-	}
-
-	// if none of them is present, use kubeconfig
-	if os.Getenv("KUBECONFIG") != "" {
-		cfg, err := ReadKubeConfigFrom(os.Getenv("KUBECONFIG"))
-		if err != nil {
-			return cfg, nil
-		}
-	}
-
-	cfg, err = ReadKubeConfigFrom(filepath.Join(home, ".kube/config"))
+	cfg, err := readKubeConfigFrom(filepath.Join(home, ".kube/config"))
 	if err == nil {
 		return cfg, nil
 	}
@@ -95,8 +109,72 @@ func ReadConfig() (*Config, error) {
 	return nil, nil
 }
 
-func ReadKubeConfigFrom(path string) (*Config, error) {
-	return nil, nil
+// readKubeConfigFrom reads kubeconfig and use it to fill a kdeploy config
+func readKubeConfigFrom(path string) (*Config, error) {
+	log.Debugf("readKubeConfigFrom %s", path)
+	// Read kubeconfig
+	if !FileExists(path) {
+		return nil, fmt.Errorf("Could not locate file %s", path)
+	}
+
+	configBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var kc KubeConfig
+
+	err = yaml.Unmarshal(configBytes, &kc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create kdeploy config
+	config := readConfigFromKubeConfig(&kc)
+
+	// add path
+	config.Path = path
+
+	log.Debugf("returning config from kubeconfig: %+v", config)
+	return config, nil
+}
+
+// readConfigFromKubeConfig extract Kubeconfig fields to build a Kdeploy config structure
+func readConfigFromKubeConfig(kc *KubeConfig) *Config {
+	log.Debugf("readConfigFromKubeConfig %+v", kc)
+	// currentContext := kc.CurrentContext
+	var userID, clusterID string
+	config := &Config{}
+
+	for _, context := range kc.Contexts {
+		if context.Name == kc.CurrentContext {
+			userID = context.Context.User
+			clusterID = context.Context.Cluster
+			break
+		}
+	}
+
+	if userID != "" {
+		for _, user := range kc.Users {
+			if user.Name == userID {
+				config.Connection.Cert = user.User.ClientCertificate
+				config.Connection.Key = user.User.ClientKey
+				break
+			}
+
+		}
+	}
+
+	if clusterID != "" {
+		for _, cluster := range kc.Clusters {
+			if cluster.Name == clusterID {
+				config.Connection.APIEndpoint = cluster.Cluster.Server
+				config.Connection.CACert = cluster.Cluster.CertificateAuthority
+			}
+		}
+	}
+
+	return config
 }
 
 func ReadConfigFrom(path string) (*Config, error) {
@@ -196,7 +274,10 @@ func InitializeConfig(c *cli.Context) error {
 	os.Setenv("KUBERNETES_CLIENT_CERT", config.Connection.Cert)
 	os.Setenv("KUBERNETES_CLIENT_KEY", config.Connection.Key)
 	os.Setenv("KUBERNETES_ENDPOINT", config.Connection.APIEndpoint)
-	os.Setenv("KDEPLOY_CONFIG", config.Path)
+	os.Setenv("KUBECONFIG", config.Path)
+
+	// TODO delete
+	// os.Setenv("KDEPLOY_CONFIG", config.Path)
 
 	return nil
 }
