@@ -2,6 +2,8 @@ package utils
 
 import (
 	"archive/zip"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +13,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 )
+
+func GetMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
 
 // CheckRequiredFlags checks for required flags, and show usage if requirements not met
 func CheckRequiredFlags(c *cli.Context, flags []string) {
@@ -35,7 +42,11 @@ func FileExists(name string) bool {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		if os.Getenv("DEBUG") == "1" {
+			log.Fatal(err)
+		} else {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -69,4 +80,26 @@ func Unzip(src, dest string) error {
 		}
 	}
 	return nil
+}
+
+// Keys returns the keys in a map[string]string
+func Keys(m map[string]string) []string {
+	names := make([]string, len(m))
+	i := 0
+	for key := range m {
+		names[i] = key
+		i++
+	}
+	return names
+}
+
+// Values returns the values in a map[string]string
+func Values(m map[string]string) []string {
+	vals := make([]string, len(m))
+	i := 0
+	for _, val := range m {
+		vals[i] = val
+		i++
+	}
+	return vals
 }

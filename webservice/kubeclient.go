@@ -3,17 +3,23 @@ package webservice
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
+	"os"
 
+	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
 )
 
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	GetControllers(map[string]string) (string, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(map[string]string) (string, error)    // GetServices gets deployed services that match the labels specified
+	FindDeployedKubewareVersion(string, string) (string, error)
+	GetControllers(...string) (*[]models.ReplicaController, error)                     // GetControllers gets deployed replication controllers that match the labels specified
+	GetControllersForNamespace(string, ...string) (*[]models.ReplicaController, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(...string) (*[]models.Service, error)                                  // GetServices gets deployed services that match the labels specified
+	GetServicesForNamespace(string, ...string) (*[]models.Service, error)              // GetServices gets deployed services that match the labels specified
 	CreateReplicaController(string, []byte) (string, error)
+	CreateReplicaControllers([]string) error
 	CreateService(string, []byte) (string, error)
+	CreateServices([]string) error
 	DeleteReplicationController(string, string) error
 	DeleteService(string, string) error
 	SetSpecReplicas(string, string, uint) error
@@ -21,8 +27,8 @@ type KubeClient interface {
 	GetStatusReplicas(string, string) (uint, error)
 }
 
-// kubeClientImpl implements KubeClient interface
-type kubeClientImpl struct {
+// kubeClient implements KubeClient interface
+type kubeClient struct {
 	service *RestService
 }
 
@@ -36,45 +42,79 @@ func NewKubeClient() (KubeClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &kubeClientImpl{service: rs}, nil
+	return &kubeClient{service: rs}, nil
 }
 
 // GetServices retrieves a json representation of existing services
-func (k *kubeClientImpl) GetServices(labelSelector map[string]string) (string, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClient) GetServices(labelSelector ...string) (*[]models.Service, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/services", params)
 	if err != nil {
-		return "", fmt.Errorf("error getting services: %s", err)
+		return nil, fmt.Errorf("error getting services: %s", err)
 	}
-	return string(json), nil
+
+	return models.NewServicesJSON(string(json))
+}
+
+func (k *kubeClient) GetServicesForNamespace(namespace string, labelSelector ...string) (*[]models.Service, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
+	}
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/services", namespace)
+	json, _, err := k.service.Get(path, params)
+	if err != nil {
+		return nil, fmt.Errorf("error getting services: %s", err)
+	}
+
+	return models.NewServicesJSON(string(json))
 }
 
 // GetServices retrieves a json representation of existing controllers
-func (k *kubeClientImpl) GetControllers(labelSelector map[string]string) (string, error) {
-	filter := url.Values{}
-	for k, v := range labelSelector {
-		filter.Add(k, v)
+func (k *kubeClient) GetControllers(labelSelector ...string) (*[]models.ReplicaController, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
 	}
-	params := map[string]string{
-		"pretty":        "true",
-		"labelSelector": filter.Encode(),
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
 	}
 	json, _, err := k.service.Get("/api/v1/replicationcontrollers", params)
 	if err != nil {
-		return "", fmt.Errorf("error getting replication controllers: %s", err)
+		return nil, fmt.Errorf("error getting replication controllers: %s", err)
 	}
-	return string(json), nil
+
+	return models.NewControllersJSON(string(json))
+}
+
+func (k *kubeClient) GetControllersForNamespace(namespace string, labelSelector ...string) (*[]models.ReplicaController, error) {
+	if len(labelSelector) > 1 {
+		return nil, fmt.Errorf("too many parameters")
+	}
+	params := map[string]string{"pretty": "true"}
+	if len(labelSelector) > 0 {
+		params["labelSelector"] = labelSelector[0]
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/replicationcontrollers", namespace)
+	json, _, err := k.service.Get(path, params)
+	if err != nil {
+		return nil, fmt.Errorf("error getting replication controllers: %s", err)
+	}
+
+	return models.NewControllersJSON(string(json))
 }
 
 // CreateReplicaController creates a replication controller as specified in the json doc received as argument
-func (k *kubeClientImpl) CreateReplicaController(namespace string, rcjson []byte) (string, error) {
+func (k *kubeClient) CreateReplicaController(namespace string, rcjson []byte) (string, error) {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers", namespace)
 	json, status, err := k.service.Post(path, []byte(rcjson))
 	if err != nil {
@@ -87,7 +127,7 @@ func (k *kubeClientImpl) CreateReplicaController(namespace string, rcjson []byte
 }
 
 // CreateService creates a service as specified in the json doc received as argument
-func (k *kubeClientImpl) CreateService(namespace string, svcjson []byte) (string, error) {
+func (k *kubeClient) CreateService(namespace string, svcjson []byte) (string, error) {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services", namespace)
 	json, status, err := k.service.Post(path, []byte(svcjson))
 	if err != nil {
@@ -100,20 +140,19 @@ func (k *kubeClientImpl) CreateService(namespace string, svcjson []byte) (string
 }
 
 // DeleteService deletes a service
-func (k *kubeClientImpl) DeleteService(namespace, service string) error {
+func (k *kubeClient) DeleteService(namespace, service string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, service)
 	_, status, err := k.service.Delete(path)
 	if err != nil {
 		return fmt.Errorf("error deleting service: %s", err)
 	}
 	if status != 200 {
-		return fmt.Errorf("error deleting service: wrong http status code: %v", status)
+		return fmt.Errorf("wrong http status code: %v", status)
 	}
 	return nil
 }
 
-// DeleteService deletes a service
-func (k *kubeClientImpl) DeleteReplicationController(namespace, controller string) error {
+func (k *kubeClient) DeleteReplicationController(namespace, controller string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	_, status, err := k.service.Delete(path)
 	if err != nil {
@@ -126,7 +165,7 @@ func (k *kubeClientImpl) DeleteReplicationController(namespace, controller strin
 }
 
 // GetSpecReplicas gets a replication controller's target number of replicas
-func (k *kubeClientImpl) GetSpecReplicas(namespace, controller string) (uint, error) {
+func (k *kubeClient) GetSpecReplicas(namespace, controller string) (uint, error) {
 	rcJSON, err := k.getController(namespace, controller)
 	if err != nil {
 		return 0, err
@@ -140,7 +179,7 @@ func (k *kubeClientImpl) GetSpecReplicas(namespace, controller string) (uint, er
 }
 
 // GetStatusReplicas gets a replication controller's current number of replicas
-func (k *kubeClientImpl) GetStatusReplicas(namespace, controller string) (uint, error) {
+func (k *kubeClient) GetStatusReplicas(namespace, controller string) (uint, error) {
 	rcJSON, err := k.getController(namespace, controller)
 	if err != nil {
 		return 0, err
@@ -153,7 +192,7 @@ func (k *kubeClientImpl) GetStatusReplicas(namespace, controller string) (uint, 
 	return rc.Status.Replicas, nil
 }
 
-func (k *kubeClientImpl) getController(namespace, controller string) (string, error) {
+func (k *kubeClient) getController(namespace, controller string) (string, error) {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	rcJSON, status, err := k.service.Get(path, nil)
 	if err != nil {
@@ -165,15 +204,15 @@ func (k *kubeClientImpl) getController(namespace, controller string) (string, er
 	return string(rcJSON), nil
 }
 
-func (k *kubeClientImpl) SetSpecReplicas(namespace, controller string, replicas uint) error {
+func (k *kubeClient) SetSpecReplicas(namespace, controller string, replicas uint) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, controller)
 	body := jsonPatchSpecReplicas(replicas)
-	_, status, err := k.service.Patch(path, []byte(body))
+	resp, status, err := k.service.Patch(path, []byte(body))
 	if err != nil {
 		return err
 	}
 	if status != 200 {
-		return fmt.Errorf("error creating service: wrong http status code: %v", status)
+		return fmt.Errorf("wrong http status code: %v (%s)", status, resp)
 	}
 	return nil
 }
@@ -181,10 +220,76 @@ func (k *kubeClientImpl) SetSpecReplicas(namespace, controller string, replicas 
 func jsonPatchSpecReplicas(nr uint) []byte {
 	var patch struct {
 		Spec struct {
-			Replicas uint
-		}
+			Replicas uint `json:"replicas"`
+		} `json:"spec"`
 	}
 	patch.Spec.Replicas = nr
-	data, _ := json.Marshal(patch)
+	data, err := json.Marshal(patch)
+	utils.CheckError(err)
 	return data
+}
+
+func (k *kubeClient) CreateServices(svcSpecs []string) error {
+	for _, spec := range svcSpecs {
+		_, err := k.CreateService(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
+		if err != nil {
+			return fmt.Errorf("error creating services: %v", err)
+		}
+	}
+	return nil
+}
+
+func (k *kubeClient) CreateReplicaControllers(rcSpecs []string) error {
+	for _, spec := range rcSpecs {
+		_, err := k.CreateReplicaController(os.Getenv("KDEPLOY_NAMESPACE"), []byte(spec))
+		if err != nil {
+			return fmt.Errorf("error creating replication controllers: %v", err)
+		}
+	}
+	return nil
+}
+
+func (k *kubeClient) FindDeployedKubewareVersion(namespace, kubename string) (string, error) {
+	versions := map[string]string{}
+	services, err := k.GetServicesForNamespace(namespace)
+	if err != nil {
+		return "", err
+	}
+	controllers, err := k.GetControllersForNamespace(namespace)
+	if err != nil {
+		return "", err
+	}
+	// Iterate over services and collect versions
+	for _, s := range *services {
+		n := s.GetKube()
+		v := s.GetVersion()
+		prev, found := versions[n]
+		// Check if version already found
+		if !found {
+			versions[n] = v
+		}
+		// Check if a different version was already found
+		if found && prev != v {
+			return "", fmt.Errorf("found more than one version of the same Kubeware (%s.%s %s/%s)", namespace, kubename, prev, v)
+		}
+	}
+	// Iterate over controllers and collect versions
+	for _, c := range *controllers {
+		n := c.GetKube()
+		v := c.GetVersion()
+		prev, found := versions[n]
+		// Check if version already found
+		if !found {
+			versions[n] = v
+		}
+		// Check if a different version was already found
+		if found && prev != v {
+			return "", fmt.Errorf("found more than one version of the same Kubeware (%s.%s %s/%s)", namespace, kubename, prev, v)
+		}
+	}
+	v, found := versions[kubename]
+	if !found {
+		return "", fmt.Errorf("could not find kubeware '%s.%s'", namespace, kubename)
+	}
+	return v, nil
 }

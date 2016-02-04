@@ -123,7 +123,7 @@ func defaultsMapFromMetadata(md AttributesMetadata) (interface{}, error) {
 }
 
 // ParseServices parses the service templates in the kube and returns their JSON representations
-func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
+func (m Metadata) ParseServices(attributes digger.Digger) (map[string]string, error) {
 	err := m.CheckRequiredAttributes(attributes)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (m Metadata) ParseServices(attributes digger.Digger) ([]string, error) {
 }
 
 // ParseControllers parses the replication controllers in the kube and returns their JSON representations
-func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
+func (m Metadata) ParseControllers(attributes digger.Digger) (map[string]string, error) {
 	err := m.CheckRequiredAttributes(attributes)
 	if err != nil {
 		return nil, err
@@ -141,15 +141,26 @@ func (m Metadata) ParseControllers(attributes digger.Digger) ([]string, error) {
 	return m.parseTemplates(m.ReplicationControllers, attributes)
 }
 
-func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) ([]string, error) {
-	var specs = []string{}
-	for _, templateFile := range templates {
+func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) (map[string]string, error) {
+	var specs = map[string]string{}
+	for specName, templateFile := range templates {
 		log.Debugf("Going to parse %s/%s", m.path, templateFile)
 		specMap, err := parseTemplate(fmt.Sprintf("%s/%s", m.path, templateFile), attributes)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
 		}
-		err = addKubewareLabel(m.Name, specMap)
+		s, err := digger.NewMapDigger(specMap)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
+		}
+		name, err := s.GetString("metadata/name")
+		if err != nil {
+			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)
+		}
+		if name != specName {
+			return nil, fmt.Errorf("non matching resource name in %s", templateFile)
+		}
+		err = addKubewareLabel(m.Name, m.Version, specMap)
 		if err != nil {
 			return nil, fmt.Errorf("error adding kubeware labels to %s: %v", templateFile, err)
 		}
@@ -157,7 +168,7 @@ func (m Metadata) parseTemplates(templates map[string]string, attributes digger.
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling into json (%s): %v", templateFile, err)
 		}
-		specs = append(specs, string(specJSON))
+		specs[specName] = string(specJSON)
 	}
 	return specs, nil
 }
@@ -176,13 +187,17 @@ func parseTemplate(templateFile string, attributes digger.Digger) (map[string]in
 	return normalizedMap.(map[string]interface{}), nil
 }
 
-func addKubewareLabel(name string, specmap map[string]interface{}) error {
+func addKubewareLabel(name, version string, specmap map[string]interface{}) error {
 	metadata := specmap["metadata"].(map[string]interface{})
 	if metadata["labels"] != nil {
 		labels := metadata["labels"].(map[string]interface{})
 		labels["kubeware"] = name
+		labels["kubeware-version"] = version
 	} else {
-		metadata["labels"] = map[string]string{"kubeware": name}
+		metadata["labels"] = map[string]string{
+			"kubeware":         name,
+			"kubeware-version": version,
+		}
 	}
 
 	return nil
