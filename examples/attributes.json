@@ -1,10 +1,10 @@
 {
    "rc":{
       "frontend":{
-         "number":8
+         "number":5
      },
       "redis-slave":{
-         "number":8
+         "number":5
      },
       "spark-worker":{
          "number":2

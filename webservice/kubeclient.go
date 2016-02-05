@@ -2,6 +2,7 @@ package webservice
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,22 +10,27 @@ import (
 	"github.com/flexiant/kdeploy/utils"
 )
 
+// ErrNotFound indicates the object that we are looking for was not found
+var ErrNotFound = errors.New("Object not found")
+
 // KubeClient interface for a custom Kubernetes API client
 type KubeClient interface {
-	FindDeployedKubewareVersion(string, string) (string, error)
-	GetControllers(...string) (*[]models.ReplicaController, error)                     // GetControllers gets deployed replication controllers that match the labels specified
-	GetControllersForNamespace(string, ...string) (*[]models.ReplicaController, error) // GetControllers gets deployed replication controllers that match the labels specified
-	GetServices(...string) (*[]models.Service, error)                                  // GetServices gets deployed services that match the labels specified
-	GetServicesForNamespace(string, ...string) (*[]models.Service, error)              // GetServices gets deployed services that match the labels specified
-	CreateReplicaController(string, []byte) (string, error)
-	CreateReplicaControllers([]string) error
-	CreateService(string, []byte) (string, error)
-	CreateServices([]string) error
-	DeleteReplicationController(string, string) error
-	DeleteService(string, string) error
-	SetSpecReplicas(string, string, uint) error
-	GetSpecReplicas(string, string) (uint, error)
-	GetStatusReplicas(string, string) (uint, error)
+	FindDeployedKubewareVersion(namespace, kubeName string) (string, error)
+	GetControllers(labelSelector ...string) (*[]models.ReplicaController, error)                               // GetControllers gets deployed replication controllers that match the labels specified
+	GetControllersForNamespace(namespace string, labelSelector ...string) (*[]models.ReplicaController, error) // GetControllers gets deployed replication controllers that match the labels specified
+	GetServices(labelSelector ...string) (*[]models.Service, error)                                            // GetServices gets deployed services that match the labels specified
+	GetServicesForNamespace(namespace string, labelSelector ...string) (*[]models.Service, error)              // GetServices gets deployed services that match the labels specified
+	CreateReplicaController(namespace string, spec []byte) (string, error)
+	CreateReplicaControllers(rcSpecs []string) error
+	CreateService(namespace string, spec []byte) (string, error)
+	CreateServices(svcSpecs []string) error
+	DeleteReplicationController(namespace, rcName string) error
+	DeleteService(namespace, svcName string) error
+	SetSpecReplicas(namespace, rcName string, nreplicas uint) error
+	GetSpecReplicas(namespace, rcName string) (uint, error)
+	GetStatusReplicas(namespace, rcName string) (uint, error)
+	IsServiceDeployed(namespace, svcName string) (bool, error)
+	ReplaceService(namespace, svcName, svcJSON string) error
 }
 
 // kubeClient implements KubeClient interface
@@ -198,6 +204,24 @@ func (k *kubeClient) getController(namespace, controller string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	if status == 404 {
+		return "", ErrNotFound
+	}
+	if status != 200 {
+		return "", fmt.Errorf("wrong http status code: %v", status)
+	}
+	return string(rcJSON), nil
+}
+
+func (k *kubeClient) getService(namespace, svcName string) (string, error) {
+	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
+	rcJSON, status, err := k.service.Get(path, nil)
+	if err != nil {
+		return "", err
+	}
+	if status == 404 {
+		return "", ErrNotFound
+	}
 	if status != 200 {
 		return "", fmt.Errorf("wrong http status code: %v", status)
 	}
@@ -292,4 +316,30 @@ func (k *kubeClient) FindDeployedKubewareVersion(namespace, kubename string) (st
 		return "", fmt.Errorf("could not find kubeware '%s.%s'", namespace, kubename)
 	}
 	return v, nil
+}
+
+func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) {
+	_, err := k.getService(namespace, svcName)
+	if err == ErrNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
+	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
+	_, status, err := k.service.Put(path, []byte(svcJSON))
+	if err != nil {
+		return err
+	}
+	if status == 404 {
+		return ErrNotFound
+	}
+	if status != 200 && status != 201 {
+		return fmt.Errorf("wrong http status code: %v", status)
+	}
+	return nil
 }

@@ -105,6 +105,35 @@ func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
 	return body, response.StatusCode, err
 }
 
+func (r *RestService) Put(urlPath string, json []byte) ([]byte, int, error) {
+	loc, _ := url.Parse(r.endpoint)
+	loc.Path = urlPath
+
+	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
+		log.Infof("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		return nil, 200, nil
+	}
+	log.Debugf("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+
+	request, err := http.NewRequest("PUT", loc.String(), bytes.NewBuffer(json))
+	if err != nil {
+		return nil, -1, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := r.client.Do(request)
+	if err != nil {
+		return nil, -1, err
+	}
+	defer response.Body.Close()
+
+	body, _ := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return body, response.StatusCode, err
+}
+
 func (r *RestService) Patch(urlPath string, json []byte) ([]byte, int, error) {
 	loc, _ := url.Parse(r.endpoint)
 	loc.Path = urlPath
