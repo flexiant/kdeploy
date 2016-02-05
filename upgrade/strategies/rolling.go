@@ -44,12 +44,34 @@ func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[st
 		if err != nil {
 			return err
 		}
+		// read desired replicas
+		targetReplicas, err := extractSpecReplicas(rcJSON)
+		if err != nil {
+			return err
+		}
 		// roll them
-
+		err = s.rollReplicationController(namespace, rcName, tempName, targetReplicas)
+		if err != nil {
+			return fmt.Errorf("error rolling out %s : %v", rcName, err)
+		}
 		// replace "name" with new rc
+		s.kubeClient.ReplaceReplicationController(namespace, rcName, rcJSON)
 		// delete "name-next"
+		s.kubeClient.DeleteReplicationController(namespace, tempName)
 	}
 	return nil
+}
+
+func extractSpecReplicas(rcJSON string) (uint, error) {
+	d, err := digger.NewJSONDigger([]byte(rcJSON))
+	if err != nil {
+		return 0, err
+	}
+	n, err := d.GetNumber("spec/replicas")
+	if err != nil {
+		return 0, err
+	}
+	return uint(n), nil
 }
 
 // here we should create the new RC considering:

@@ -30,6 +30,7 @@ type KubeClient interface {
 	GetSpecReplicas(namespace, rcName string) (uint, error)
 	GetStatusReplicas(namespace, rcName string) (uint, error)
 	IsServiceDeployed(namespace, svcName string) (bool, error)
+	ReplaceReplicationController(namespace, rcName, rcJSON string) error
 	ReplaceService(namespace, svcName, svcJSON string) error
 }
 
@@ -332,6 +333,21 @@ func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) 
 func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
 	_, status, err := k.service.Put(path, []byte(svcJSON))
+	if err != nil {
+		return err
+	}
+	if status == 404 {
+		return ErrNotFound
+	}
+	if status != 200 && status != 201 {
+		return fmt.Errorf("wrong http status code: %v", status)
+	}
+	return nil
+}
+
+func (k *kubeClient) ReplaceReplicationController(namespace, rcName, rcJSON string) error {
+	path := fmt.Sprintf("api/v1/namespaces/%s/replicationcontrollers/%s", namespace, rcName)
+	_, status, err := k.service.Put(path, []byte(rcJSON))
 	if err != nil {
 		return err
 	}
