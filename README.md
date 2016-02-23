@@ -70,7 +70,7 @@ Upload the kubeware to a folder in github (we only support github for now)
 
 To deploy the application with a set of attributes use
 ```
-kdeploy deploy --kubeware https://github.com/flexiant/kdeploy/tree/master/examples --attribute poorman.json --namespace poorman
+kdeploy deploy --kubeware https://github.com/flexiant/kubeware-guestbook --attribute poorman.json --namespace poorman
 ```
 
 That will run a full application in kubernetes, using your selection of attributes.
@@ -83,7 +83,7 @@ kdeploy list --all
 
 To delete a kubeware
 ```
-kdeploy delete --kubeware https://github.com/flexiant/kdeploy/tree/master/examples --namespace poorman
+kdeploy delete --kubeware https://github.com/flexiant/kubeware-guestbook --namespace poorman
 ```
 
 What else can I do with kdeploy
