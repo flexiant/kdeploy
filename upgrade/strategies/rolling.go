@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/webservice"
 )
@@ -29,19 +30,24 @@ func RollingUpgradeStrategy(k webservice.KubeClient, maxReplicasExcess uint) Upg
 }
 
 func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[string]string) error {
+	log.Debugf("Using rolling upgrade strategy")
+
 	// for each service
-	for svcName, svcJSON := range services {
-		err := s.upgradeService(namespace, svcName, svcJSON)
-		if err != nil {
-			return err
-		}
-	}
+	// for svcName, svcJSON := range services {
+	// 	err := s.upgradeService(namespace, svcName, svcJSON)
+	// 	if err != nil {
+	// 		log.Debugf("Error upgrading service: %v", err)
+	// 		return err
+	// 	}
+	// }
 	// for each rc
 	for rcName, rcJSON := range controllers {
 		// create new rc with new name (e.g. name-next) and 0 target replicas (why not rename old? -> repeatability)
 		tempName := fmt.Sprintf("%s-next", rcName)
+		log.Debugf("Creating temporal RC '%s'", tempName)
 		_, err := s.createRCAsRollingTarget(namespace, tempName, rcJSON)
 		if err != nil {
+			log.Debugf("error creating rolling target: %v", err)
 			return err
 		}
 		// read desired replicas
@@ -49,6 +55,7 @@ func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[st
 		if err != nil {
 			return err
 		}
+		log.Debugf("Want '%v' replicas", targetReplicas)
 		// roll them
 		err = s.rollReplicationController(namespace, rcName, tempName, targetReplicas)
 		if err != nil {
@@ -81,36 +88,41 @@ func extractSpecReplicas(rcJSON string) (uint, error) {
 //   dont get mixed with the previous version ones
 func (s *rollingStrategy) createRCAsRollingTarget(namespace, name, rcJSON string) (string, error) {
 	// parse json object
+	log.Debugf("parsing json for new RC '%s'", name)
 	var rc map[string]interface{}
 	err := json.Unmarshal([]byte(rcJSON), &rc)
 	if err != nil {
 		return "", fmt.Errorf("could not unmarshal rc: %v", err)
 	}
 	// set kube version as label in pod template, and in selector
+	log.Debugf("setting kube version tags for new RC '%s'", name)
 	err = setKubeVersionOnRC(rc)
 	if err != nil {
 		return "", fmt.Errorf("could not set version label: %v", err)
 	}
 	// set zero replicas
+	log.Debugf("setting zero replicas for new RC '%s'", name)
 	err = setZeroReplicasOnRC(rc)
 	if err != nil {
 		return "", fmt.Errorf("could not zero replicas: %v", err)
 	}
 	// rename it
-	err = renameRC(rc)
-	if err != nil {
-		return "", fmt.Errorf("could not rename rc: %v", err)
-	}
+	log.Debugf("renaming new RC '%s'", name)
+	renameRC(rc, name)
 	// create it
+	log.Debugf("creating new RC '%s'", name)
 	newJSON, err := json.Marshal(rc)
 	if err != nil {
+		log.Debugf("could not marshal modified rc: %v", err)
 		return "", fmt.Errorf("could not marshal modified rc: %v", err)
 	}
 	return s.kubeClient.CreateReplicaController(namespace, newJSON)
 }
 
-func renameRC(rc map[string]interface{}) error {
-	return fmt.Errorf("Not Implemented Yet")
+func renameRC(rc map[string]interface{}, name string) {
+	m := rc["metadata"].(map[string]interface{})
+	m["name"] = name
+	rc["metadata"] = m
 }
 
 func setKubeVersionOnRC(rc map[string]interface{}) error {
@@ -119,7 +131,7 @@ func setKubeVersionOnRC(rc map[string]interface{}) error {
 		return err
 	}
 	// set at pod template
-	path := []string{"spec", "template", "spec", "metadata", "labels"}
+	path := []string{"spec", "template", "metadata", "labels"}
 	m := rc
 	for _, s := range path {
 		if m[s] == nil {
@@ -129,13 +141,15 @@ func setKubeVersionOnRC(rc map[string]interface{}) error {
 	}
 	m["kubeware"] = kv
 	// set at label selector
-	rcspec := rc["spec"].(map[string]interface{})
-	ls, found := rcspec["selector"].(string)
-	if !found || len(ls) == 0 {
-		rcspec["selector"] = fmt.Sprintf("kubeware=%s", kv)
-	} else {
-		rcspec["selector"] = fmt.Sprintf("%s,kubeware=%s", ls, kv)
+	path = []string{"spec", "selector"}
+	m = rc
+	for _, s := range path {
+		if m[s] == nil {
+			m[s] = map[string]interface{}{}
+		}
+		m = m[s].(map[string]interface{})
 	}
+	m["kubeware"] = kv
 
 	return nil
 }
@@ -169,11 +183,13 @@ func (s *rollingStrategy) upgradeService(namespace, svcName, svcJSON string) err
 		return err
 	}
 	if deployed {
+		log.Debugf("Replacing service '%s'", svcName)
 		err = s.kubeClient.ReplaceService(namespace, svcName, svcJSON)
 		if err != nil {
 			return err
 		}
 	} else {
+		log.Debugf("Creating service '%s' since it wasnt deployed previously", svcName)
 		_, err = s.kubeClient.CreateService(namespace, []byte(svcJSON))
 		if err != nil {
 			return err
@@ -183,6 +199,7 @@ func (s *rollingStrategy) upgradeService(namespace, svcName, svcJSON string) err
 }
 
 func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string, targetReplicas uint) error {
+	log.Debugf("Rolling out RC '%s' to '%s'", oldRCid, newRCid)
 	for ; ; time.Sleep(1 * time.Second) {
 		// build RC objects
 		oldRC, err := buildRCObject(s.kubeClient, ns, oldRCid)
@@ -206,6 +223,7 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 				totalAllowedReplicas := targetReplicas + s.maxReplicasExcess
 				if totalCurrentReplicas < totalAllowedReplicas {
 					s.kubeClient.SetSpecReplicas(ns, newRCid, newRC.specReplicas+1)
+					log.Debugf("Set '%s' to '%v' replicas", newRCid, newRC.specReplicas+1)
 				}
 			}
 		}
@@ -216,6 +234,7 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 				totalCurrentReplicas := newRC.statusReplicas + oldRC.statusReplicas
 				if totalCurrentReplicas > targetReplicas {
 					s.kubeClient.SetSpecReplicas(ns, oldRCid, oldRC.specReplicas-1)
+					log.Debugf("Set '%s' to '%v' replicas", oldRCid, oldRC.specReplicas-1)
 				}
 			}
 		}

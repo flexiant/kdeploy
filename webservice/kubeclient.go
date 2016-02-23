@@ -129,7 +129,7 @@ func (k *kubeClient) CreateReplicaController(namespace string, rcjson []byte) (s
 		return "", fmt.Errorf("error creating replication controller: %s", err)
 	}
 	if status != 200 && status != 201 {
-		return "", fmt.Errorf("error creating service: wrong http status code: %v", status)
+		return "", fmt.Errorf("error creating service: wrong http status code: %v (body: %s)", status, json)
 	}
 	return string(json), nil
 }
@@ -333,7 +333,7 @@ func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) 
 
 func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
-	_, status, err := k.service.Put(path, []byte(svcJSON))
+	body, status, err := k.service.Put(path, []byte(svcJSON))
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 		return ErrNotFound
 	}
 	if status != 200 && status != 201 {
-		return fmt.Errorf("wrong http status code: %v", status)
+		return fmt.Errorf("wrong http status code: %v (body: %s)", status, body)
 	}
 	return nil
 }
