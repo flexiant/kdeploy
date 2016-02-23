@@ -31,14 +31,13 @@ func prepareFlags(c *cli.Context) error {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	// Initialize cached config
 	utils.InitializeConfig(c)
 
 	return nil
 }
 
 func main() {
-
-	config, _ := utils.ReadConfig()
 
 	app := cli.NewApp()
 	app.Name = "kdeploy"
@@ -49,6 +48,11 @@ func main() {
 	app.Version = utils.VERSION
 	app.CommandNotFound = cmdNotFound
 	app.Before = prepareFlags
+
+	config := utils.PreReadConfig()
+	// TODO we shouldn't be pre-reading, since it fills default values for flags.
+	// If someone uses a config file as cmd argument, some of the values could be
+	// overwritten
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
@@ -79,13 +83,6 @@ func main() {
 			Value:  config.Connection.APIEndpoint,
 			Usage:  "Kubernetes Endpoint",
 		},
-		// TODO delete
-		// cli.StringFlag{
-		// 	EnvVar: "KDEPLOY_CONFIG",
-		// 	Name:   "kdeploy-config",
-		// 	Value:  config.Path,
-		// 	Usage:  "Kdeploy Config File",
-		// },
 		cli.StringFlag{
 			EnvVar: "KUBECONFIG",
 			Name:   "kubeconfig",

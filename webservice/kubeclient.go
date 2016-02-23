@@ -41,7 +41,8 @@ type kubeClient struct {
 
 // NewKubeClient builds a KubeClient object
 func NewKubeClient() (KubeClient, error) {
-	cfg, err := utils.CachedConfig()
+	//cfg, err := utils.CachedConfig()
+	cfg, err := utils.GetConfig()
 	if err != nil {
 		return nil, err
 	}
