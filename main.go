@@ -8,6 +8,7 @@ import (
 	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
 	"github.com/flexiant/kdeploy/list"
+	"github.com/flexiant/kdeploy/show"
 	"github.com/flexiant/kdeploy/upgrade"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -54,7 +55,6 @@ func main() {
 			Name:  "debug, D",
 			Usage: "Enable debug mode",
 		},
-
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_CA_CERT",
 			Name:   "ca-cert",
@@ -115,6 +115,13 @@ func main() {
 			Before: list.PrepareFlags,
 			Action: list.CmdList,
 			Flags:  list.Flags(),
+		},
+		{
+			Name:   "show",
+			Usage:  "Shows how a Kubeware would be created once resolved with the indicated attributes",
+			Before: show.PrepareFlags,
+			Action: show.CmdShow,
+			Flags:  show.Flags(),
 		},
 		{
 			Name:   "upgrade",

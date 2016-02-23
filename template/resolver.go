@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 
 	"github.com/flexiant/digger"
@@ -40,7 +41,9 @@ func ResolveTemplate(templatePath string, attributes digger.Digger) (string, err
 
 func BuildAttributes(filePath string, defaults digger.Digger) digger.Digger {
 	roleList, err := ioutil.ReadFile(filePath)
-	utils.CheckError(err)
+	if err != nil {
+		log.Fatalf("could not read file '%s' (%v)", filePath, err)
+	}
 
 	roleListDigger, err := digger.NewJSONDigger([]byte(roleList))
 	utils.CheckError(err)

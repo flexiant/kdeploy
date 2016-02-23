@@ -265,9 +265,9 @@ func InitializeConfig(c *cli.Context) error {
 	}
 
 	if parameters {
-		fmt.Printf("\n")
-		cli.ShowCommandHelp(c, c.Command.Name)
-		os.Exit(2)
+		// fmt.Printf("\n")
+		// cli.ShowCommandHelp(c, c.Command.Name)
+		// os.Exit(2)
 	}
 
 	os.Setenv("KUBERNETES_CA_CERT", config.Connection.CACert)
