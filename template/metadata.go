@@ -128,8 +128,23 @@ func (m Metadata) ParseServices(attributes digger.Digger) (map[string]string, er
 	if err != nil {
 		return nil, err
 	}
+	specMap, err := m.parseTemplates(m.Services, attributes)
+	if err != nil {
+		return nil, err
+	}
+	return marshalMapValues(specMap)
+}
 
-	return m.parseTemplates(m.Services, attributes)
+func marshalMapValues(m map[string]interface{}) (map[string]string, error) {
+	specs := map[string]string{}
+	for k, v := range m {
+		specJSON, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling into json (%s): %v", k, err)
+		}
+		specs[k] = string(specJSON)
+	}
+	return specs, nil
 }
 
 // ParseControllers parses the replication controllers in the kube and returns their JSON representations
@@ -138,11 +153,15 @@ func (m Metadata) ParseControllers(attributes digger.Digger) (map[string]string,
 	if err != nil {
 		return nil, err
 	}
-	return m.parseTemplates(m.ReplicationControllers, attributes)
+	specMap, err := m.parseTemplates(m.ReplicationControllers, attributes)
+	if err != nil {
+		return nil, err
+	}
+	return marshalMapValues(specMap)
 }
 
-func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) (map[string]string, error) {
-	var specs = map[string]string{}
+func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) (map[string]interface{}, error) {
+	var specs = map[string]interface{}{}
 	for specName, templateFile := range templates {
 		log.Debugf("Going to parse %s/%s", m.path, templateFile)
 		specMap, err := parseTemplate(fmt.Sprintf("%s/%s", m.path, templateFile), attributes)
@@ -164,11 +183,7 @@ func (m Metadata) parseTemplates(templates map[string]string, attributes digger.
 		if err != nil {
 			return nil, fmt.Errorf("error adding kubeware labels to %s: %v", templateFile, err)
 		}
-		specJSON, err := json.Marshal(specMap)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling into json (%s): %v", templateFile, err)
-		}
-		specs[specName] = string(specJSON)
+		specs[specName] = specMap
 	}
 	return specs, nil
 }
