@@ -13,6 +13,7 @@ type Service struct {
 		Name              string
 		Labels            map[string]string
 		Namespace         string
+		ResourceVersion   string
 	}
 	Spec struct {
 		ClusterIP string

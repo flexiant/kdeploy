@@ -33,13 +33,13 @@ func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[st
 	log.Debugf("Using rolling upgrade strategy")
 
 	// for each service
-	// for svcName, svcJSON := range services {
-	// 	err := s.upgradeService(namespace, svcName, svcJSON)
-	// 	if err != nil {
-	// 		log.Debugf("Error upgrading service: %v", err)
-	// 		return err
-	// 	}
-	// }
+	for svcName, svcJSON := range services {
+		err := s.upgradeService(namespace, svcName, svcJSON)
+		if err != nil {
+			log.Debugf("Error upgrading service: %v", err)
+			return err
+		}
+	}
 	// for each rc
 	for rcName, rcJSON := range controllers {
 		// create new rc with new name (e.g. name-next) and 0 target replicas (why not rename old? -> repeatability)

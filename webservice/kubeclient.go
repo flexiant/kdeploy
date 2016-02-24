@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -225,7 +226,7 @@ func (k *kubeClient) getService(namespace, svcName string) (string, error) {
 		return "", ErrNotFound
 	}
 	if status != 200 {
-		return "", fmt.Errorf("wrong http status code: %v", status)
+		return "", fmt.Errorf("wrong http status code: %v (body: %s)", status, rcJSON)
 	}
 	return string(rcJSON), nil
 }
@@ -332,8 +333,13 @@ func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) 
 }
 
 func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
+	// Some fields must match or the update will be denied
+	modifiedJSON, err := k.mergeServiceInmutableFields(namespace, svcName, svcJSON)
+	if err != nil {
+		return err
+	}
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
-	body, status, err := k.service.Put(path, []byte(svcJSON))
+	body, status, err := k.service.Put(path, []byte(modifiedJSON))
 	if err != nil {
 		return err
 	}
@@ -344,6 +350,40 @@ func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 		return fmt.Errorf("wrong http status code: %v (body: %s)", status, body)
 	}
 	return nil
+}
+
+func (k *kubeClient) mergeServiceInmutableFields(namespace, svcName, svcJSON string) (string, error) {
+	// Get currently deployed service
+	deployedSvcJSON, err := k.getService(namespace, svcName)
+	if err != nil {
+		return "", err
+	}
+	deployedSvcDigger, err := digger.NewJSONDigger([]byte(deployedSvcJSON))
+	if err != nil {
+		return "", err
+	}
+	// Unmarshal service to be modified
+	var modifiedSvc map[string]interface{}
+	err = json.Unmarshal([]byte(svcJSON), &modifiedSvc)
+	if err != nil {
+		return "", err
+	}
+	// set resource version
+	rv, err := deployedSvcDigger.Get("metadata/resourceVersion")
+	if err != nil {
+		return "", err
+	}
+	modifiedSvc["metadata"].(map[string]interface{})["resourceVersion"] = rv
+	// set cluster ip
+	cip, err := deployedSvcDigger.Get("spec/clusterIP")
+	if err != nil {
+		return "", err
+	}
+	modifiedSvc["spec"].(map[string]interface{})["clusterIP"] = cip
+
+	// marshal again
+	modifiedJSON, err := json.Marshal(modifiedSvc)
+	return string(modifiedJSON), nil
 }
 
 func (k *kubeClient) ReplaceReplicationController(namespace, rcName, rcJSON string) error {
