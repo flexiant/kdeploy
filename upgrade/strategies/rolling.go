@@ -94,12 +94,6 @@ func (s *rollingStrategy) createRCAsRollingTarget(namespace, name, rcJSON string
 	if err != nil {
 		return "", fmt.Errorf("could not unmarshal rc: %v", err)
 	}
-	// set kube version as label in pod template, and in selector
-	log.Debugf("setting kube version tags for new RC '%s'", name)
-	err = setKubeVersionOnRC(rc)
-	if err != nil {
-		return "", fmt.Errorf("could not set version label: %v", err)
-	}
 	// set zero replicas
 	log.Debugf("setting zero replicas for new RC '%s'", name)
 	err = setZeroReplicasOnRC(rc)
@@ -125,55 +119,10 @@ func renameRC(rc map[string]interface{}, name string) {
 	rc["metadata"] = m
 }
 
-func setKubeVersionOnRC(rc map[string]interface{}) error {
-	kv, err := extractKubeVersion(rc)
-	if err != nil {
-		return err
-	}
-	// set at pod template
-	path := []string{"spec", "template", "metadata", "labels"}
-	m := rc
-	for _, s := range path {
-		if m[s] == nil {
-			m[s] = map[string]interface{}{}
-		}
-		m = m[s].(map[string]interface{})
-	}
-	m["kubeware"] = kv
-	// set at label selector
-	path = []string{"spec", "selector"}
-	m = rc
-	for _, s := range path {
-		if m[s] == nil {
-			m[s] = map[string]interface{}{}
-		}
-		m = m[s].(map[string]interface{})
-	}
-	m["kubeware"] = kv
-
-	return nil
-}
-
 func setZeroReplicasOnRC(rc map[string]interface{}) error {
 	rcspec := rc["spec"].(map[string]interface{})
 	rcspec["replicas"] = 0
 	return nil
-}
-
-func extractKubeVersion(rc map[string]interface{}) (string, error) {
-	d, err := digger.NewMapDigger(rc)
-	if err != nil {
-		return "", err
-	}
-	k, err := d.GetString("metadata/labels/kubeware")
-	if err != nil {
-		return "", err
-	}
-	v, err := d.GetString("metadata/labels/kubeware-version")
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s-%s", k, v), nil
 }
 
 func (s *rollingStrategy) upgradeService(namespace, svcName, svcJSON string) error {

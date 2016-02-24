@@ -1,13 +1,11 @@
 package deploy
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
@@ -35,9 +33,6 @@ func CmdDeploy(c *cli.Context) {
 	log.Debugf("Parsing controllers")
 	controllersSpecs, err := metadata.ParseControllers(attributes)
 	utils.CheckError(err)
-	// set version labels on RCs
-	err = setKubeVersionOnRCs(controllersSpecs)
-	utils.CheckError(err)
 	// creates Kubernetes client
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
@@ -51,70 +46,4 @@ func CmdDeploy(c *cli.Context) {
 	utils.CheckError(err)
 
 	fmt.Printf("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
-}
-
-func setKubeVersionOnRCs(rcs map[string]string) error {
-	for name, rcjson := range rcs {
-		var rc map[string]interface{}
-		err := json.Unmarshal([]byte(rcjson), &rc)
-		if err != nil {
-			return fmt.Errorf("could not unmarshal rc '%s': %v", name, err)
-		}
-		err = setKubeVersionOnRC(rc)
-		if err != nil {
-			return err
-		}
-		newJSON, err := json.Marshal(rc)
-		if err != nil {
-			log.Debugf("could not marshal modified rc: %v", err)
-			return fmt.Errorf("could not marshal modified rc: %v", err)
-		}
-		rcs[name] = string(newJSON)
-	}
-	return nil
-}
-
-func setKubeVersionOnRC(rc map[string]interface{}) error {
-	kv, err := extractKubeVersion(rc)
-	if err != nil {
-		return err
-	}
-	// set at pod template
-	path := []string{"spec", "template", "metadata", "labels"}
-	m := rc
-	for _, s := range path {
-		if m[s] == nil {
-			m[s] = map[string]interface{}{}
-		}
-		m = m[s].(map[string]interface{})
-	}
-	m["kubeware"] = kv
-	// set at label selector
-	path = []string{"spec", "selector"}
-	m = rc
-	for _, s := range path {
-		if m[s] == nil {
-			m[s] = map[string]interface{}{}
-		}
-		m = m[s].(map[string]interface{})
-	}
-	m["kubeware"] = kv
-
-	return nil
-}
-
-func extractKubeVersion(rc map[string]interface{}) (string, error) {
-	d, err := digger.NewMapDigger(rc)
-	if err != nil {
-		return "", err
-	}
-	k, err := d.GetString("metadata/labels/kubeware")
-	if err != nil {
-		return "", err
-	}
-	v, err := d.GetString("metadata/labels/kubeware-version")
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s-%s", k, v), nil
 }
