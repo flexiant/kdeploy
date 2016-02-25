@@ -17,6 +17,12 @@ type Service struct {
 	}
 	Spec struct {
 		ClusterIP string
+		Ports     []struct {
+			NodePort   int
+			Port       int
+			Protocol   string
+			TargetPort int
+		}
 	}
 	Status struct {
 		LoadBalancer struct {

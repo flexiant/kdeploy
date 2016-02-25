@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/flexiant/digger"
+	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -333,11 +333,43 @@ func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) 
 }
 
 func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
-	// Some fields must match or the update will be denied
-	modifiedJSON, err := k.mergeServiceInmutableFields(namespace, svcName, svcJSON)
+	// Get currently deployed service
+	log.Debugf("Get currently deployed service")
+	deployedSvcJSON, err := k.getService(namespace, svcName)
 	if err != nil {
 		return err
 	}
+	var deployedSvc models.Service
+	err = json.Unmarshal([]byte(deployedSvcJSON), &deployedSvc)
+	if err != nil {
+		return err
+	}
+	// Unmarshal service to be modified
+	log.Debugf("Unmarshal service to be modified")
+	var modifiedSvc map[string]interface{}
+	err = json.Unmarshal([]byte(svcJSON), &modifiedSvc)
+	if err != nil {
+		return err
+	}
+	// Some fields must match or the update will be denied
+	log.Debugf("Merging inmutables")
+	err = mergeServiceInmutableFields(modifiedSvc, deployedSvc)
+	if err != nil {
+		return err
+	}
+	// For concerto-LB, we need to preserve the current nodePort, since this wouldnt result in a
+	// LB update and the haproxy rules would still refer to the old one, raising a 503 http error on access
+	log.Debugf("Preserving nodeports")
+	err = preserveNodePorts(modifiedSvc, deployedSvc)
+	if err != nil {
+		return err
+	}
+	// marshal again
+	modifiedJSON, err := json.Marshal(modifiedSvc)
+	if err != nil {
+		return err
+	}
+
 	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
 	body, status, err := k.service.Put(path, []byte(modifiedJSON))
 	if err != nil {
@@ -352,38 +384,24 @@ func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 	return nil
 }
 
-func (k *kubeClient) mergeServiceInmutableFields(namespace, svcName, svcJSON string) (string, error) {
-	// Get currently deployed service
-	deployedSvcJSON, err := k.getService(namespace, svcName)
-	if err != nil {
-		return "", err
-	}
-	deployedSvcDigger, err := digger.NewJSONDigger([]byte(deployedSvcJSON))
-	if err != nil {
-		return "", err
-	}
-	// Unmarshal service to be modified
-	var modifiedSvc map[string]interface{}
-	err = json.Unmarshal([]byte(svcJSON), &modifiedSvc)
-	if err != nil {
-		return "", err
-	}
-	// set resource version
-	rv, err := deployedSvcDigger.Get("metadata/resourceVersion")
-	if err != nil {
-		return "", err
-	}
-	modifiedSvc["metadata"].(map[string]interface{})["resourceVersion"] = rv
-	// set cluster ip
-	cip, err := deployedSvcDigger.Get("spec/clusterIP")
-	if err != nil {
-		return "", err
-	}
-	modifiedSvc["spec"].(map[string]interface{})["clusterIP"] = cip
+func mergeServiceInmutableFields(modifiedSvc map[string]interface{}, deployedService models.Service) error {
+	modifiedSvc["metadata"].(map[string]interface{})["resourceVersion"] = deployedService.Metadata.ResourceVersion
+	modifiedSvc["spec"].(map[string]interface{})["clusterIP"] = deployedService.Spec.ClusterIP
+	return nil
+}
 
-	// marshal again
-	modifiedJSON, err := json.Marshal(modifiedSvc)
-	return string(modifiedJSON), nil
+func preserveNodePorts(modifiedSvc map[string]interface{}, deployedService models.Service) error {
+	newports := modifiedSvc["spec"].(map[string]interface{})["ports"].([]interface{})
+	for _, oldport := range deployedService.Spec.Ports {
+		for _, newport := range newports {
+			mport := newport.(map[string]interface{})
+			if int(mport["port"].(float64)) == oldport.Port {
+				log.Debugf("Found port %v already associated with nodePort %v for service '%s'", oldport.Port, oldport.NodePort, deployedService.GetName())
+				mport["nodePort"] = oldport.NodePort
+			}
+		}
+	}
+	return nil
 }
 
 func (k *kubeClient) ReplaceReplicationController(namespace, rcName, rcJSON string) error {

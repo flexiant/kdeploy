@@ -32,14 +32,6 @@ func RollingUpgradeStrategy(k webservice.KubeClient, maxReplicasExcess uint) Upg
 func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[string]string) error {
 	log.Debugf("Using rolling upgrade strategy")
 
-	// for each service
-	for svcName, svcJSON := range services {
-		err := s.upgradeService(namespace, svcName, svcJSON)
-		if err != nil {
-			log.Debugf("Error upgrading service: %v", err)
-			return err
-		}
-	}
 	// for each rc
 	for rcName, rcJSON := range controllers {
 		// create new rc with new name (e.g. name-next) and 0 target replicas (why not rename old? -> repeatability)
@@ -65,6 +57,14 @@ func (s *rollingStrategy) Upgrade(namespace string, services, controllers map[st
 		s.kubeClient.ReplaceReplicationController(namespace, rcName, rcJSON)
 		// delete "name-next"
 		s.kubeClient.DeleteReplicationController(namespace, tempName)
+	}
+	// for each service
+	for svcName, svcJSON := range services {
+		err := s.upgradeService(namespace, svcName, svcJSON)
+		if err != nil {
+			log.Debugf("Error upgrading service: %v", err)
+			return err
+		}
 	}
 	return nil
 }
