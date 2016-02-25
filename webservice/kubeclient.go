@@ -33,6 +33,8 @@ type KubeClient interface {
 	IsServiceDeployed(namespace, svcName string) (bool, error)
 	ReplaceReplicationController(namespace, rcName, rcJSON string) error
 	ReplaceService(namespace, svcName, svcJSON string) error
+	GetPodsForNamespace(namespace, labelSelector string) (*[]models.Pod, error)
+	GetPodsForController(namespace, rcName string) (*[]models.Pod, error)
 }
 
 // kubeClient implements KubeClient interface
@@ -120,6 +122,32 @@ func (k *kubeClient) GetControllersForNamespace(namespace string, labelSelector 
 	}
 
 	return models.NewControllersJSON(string(json))
+}
+
+func (k *kubeClient) GetPodsForNamespace(namespace string, labelSelector string) (*[]models.Pod, error) {
+	params := map[string]string{
+		"labelSelector": labelSelector,
+		"pretty":        "true",
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods", namespace)
+	json, _, err := k.service.Get(path, params)
+	if err != nil {
+		return nil, fmt.Errorf("error getting pods: %s", err)
+	}
+	return models.NewPodsJSON(string(json))
+}
+
+func (k *kubeClient) GetPodsForController(namespace string, rcName string) (*[]models.Pod, error) {
+	rcJSON, err := k.getController(namespace, rcName)
+	if err != nil {
+		return nil, err
+	}
+	var rc models.ReplicaController
+	err = json.Unmarshal([]byte(rcJSON), &rc)
+	if err != nil {
+		return nil, err
+	}
+	return k.GetPodsForNamespace(rc.GetNamespace(), rc.GetSelectorAsString())
 }
 
 // CreateReplicaController creates a replication controller as specified in the json doc received as argument

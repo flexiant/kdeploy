@@ -17,8 +17,8 @@ type rollingStrategy struct {
 }
 
 type replicationController struct {
-	statusReplicas uint
-	specReplicas   uint
+	readyReplicas uint
+	specReplicas  uint
 }
 
 // RollingUpgradeStrategy builds rolling upgrade strategy objects
@@ -153,10 +153,12 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 		// build RC objects
 		oldRC, err := buildRCObject(s.kubeClient, ns, oldRCid)
 		if err != nil {
+			log.Debugf("error: %v", err)
 			return err
 		}
 		newRC, err := buildRCObject(s.kubeClient, ns, newRCid)
 		if err != nil {
+			log.Debugf("error: %v", err)
 			return err
 		}
 		//
@@ -164,11 +166,11 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 			return nil
 		}
 		// newRC all pods ready? (spec == status)
-		if newRC.statusReplicas == newRC.specReplicas {
+		if newRC.readyReplicas == newRC.specReplicas {
 			// newRC reached target number of replicas?
-			if newRC.statusReplicas < targetReplicas {
+			if newRC.readyReplicas < targetReplicas {
 				// observe MaxReplicasExcess
-				totalCurrentReplicas := newRC.statusReplicas + oldRC.statusReplicas
+				totalCurrentReplicas := newRC.readyReplicas + oldRC.readyReplicas
 				totalAllowedReplicas := targetReplicas + s.maxReplicasExcess
 				if totalCurrentReplicas < totalAllowedReplicas {
 					s.kubeClient.SetSpecReplicas(ns, newRCid, newRC.specReplicas+1)
@@ -177,10 +179,10 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 			}
 		}
 		// status meets spec ?
-		if oldRC.statusReplicas == oldRC.specReplicas {
-			if oldRC.statusReplicas > 0 {
+		if oldRC.readyReplicas == oldRC.specReplicas {
+			if oldRC.readyReplicas > 0 {
 				// can decrease?
-				totalCurrentReplicas := newRC.statusReplicas + oldRC.statusReplicas
+				totalCurrentReplicas := newRC.readyReplicas + oldRC.readyReplicas
 				if totalCurrentReplicas > targetReplicas {
 					s.kubeClient.SetSpecReplicas(ns, oldRCid, oldRC.specReplicas-1)
 					log.Debugf("Set '%s' to '%v' replicas", oldRCid, oldRC.specReplicas-1)
@@ -191,14 +193,14 @@ func (s *rollingStrategy) rollReplicationController(ns, oldRCid, newRCid string,
 }
 
 func endCondition(oldRC, newRC *replicationController, specReplicas uint) bool {
-	return oldRC.statusReplicas == 0 &&
+	return oldRC.readyReplicas == 0 &&
 		oldRC.specReplicas == 0 &&
-		newRC.statusReplicas == specReplicas &&
+		newRC.readyReplicas == specReplicas &&
 		newRC.specReplicas == specReplicas
 }
 
 func buildRCObject(kube webservice.KubeClient, ns, rcname string) (*replicationController, error) {
-	statusReplicas, err := kube.GetStatusReplicas(ns, rcname)
+	readyReplicas, err := countReadyReplicas(kube, ns, rcname)
 	if err != nil {
 		return nil, err
 	}
@@ -207,8 +209,25 @@ func buildRCObject(kube webservice.KubeClient, ns, rcname string) (*replicationC
 		return nil, err
 	}
 	rc := replicationController{
-		statusReplicas: statusReplicas,
-		specReplicas:   specReplicas,
+		readyReplicas: readyReplicas,
+		specReplicas:  specReplicas,
 	}
 	return &rc, nil
+}
+
+func countReadyReplicas(kube webservice.KubeClient, ns, rcname string) (uint, error) {
+	pods, err := kube.GetPodsForController(ns, rcname)
+	if err != nil {
+		return 0, err
+	}
+	var count uint
+	for _, p := range *pods {
+		for _, c := range p.Status.Conditions {
+			if c.Type == "Ready" && c.Status == "True" {
+				count++
+				break
+			}
+		}
+	}
+	return count, nil
 }

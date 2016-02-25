@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -15,6 +16,7 @@ type ReplicaController struct {
 	}
 	Spec struct {
 		Replicas int
+		Selector map[string]interface{}
 	}
 	Status struct {
 		Replicas int
@@ -50,6 +52,14 @@ func (rc *ReplicaController) GetName() string {
 
 func (rc *ReplicaController) GetReplicas() int {
 	return rc.Status.Replicas
+}
+
+func (rc *ReplicaController) GetSelectorAsString() string {
+	parts := []string{}
+	for k, v := range rc.Spec.Selector {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, ",")
 }
 
 func (rc *ReplicaController) GetUpStats() int {
