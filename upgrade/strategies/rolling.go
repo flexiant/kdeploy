@@ -21,8 +21,8 @@ type replicationController struct {
 	specReplicas  uint
 }
 
-// RollingUpgradeStrategy builds rolling upgrade strategy objects
-func RollingUpgradeStrategy(k webservice.KubeClient, maxReplicasExcess uint) UpgradeStrategy {
+// RollRcReplaceSvcStrategy will roll-update replication controllers and replace services without recreating them
+func RollRcReplaceSvcStrategy(k webservice.KubeClient, maxReplicasExcess uint) UpgradeStrategy {
 	return &rollingStrategy{
 		maxReplicasExcess: maxReplicasExcess,
 		kubeClient:        k,
