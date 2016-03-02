@@ -6,6 +6,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
 )
 
@@ -96,14 +97,14 @@ func (s *rollPatchStrategy) createRCAsRollingTarget(namespace, name, rcJSON stri
 }
 
 func (s *rollPatchStrategy) upgradeService(namespace, svcName, svcJSON string) error {
-	// replace if exists, create if not
+	// patch if exists, create if not
 	deployed, err := s.kubeClient.IsServiceDeployed(namespace, svcName)
 	if err != nil {
 		return err
 	}
 	if deployed {
 		log.Debugf("Patch service '%s'", svcName)
-		err = s.kubeClient.PatchService(namespace, svcName, svcJSON)
+		err = s.kubeClient.PatchService(namespace, svcName, onlyMetadata(svcJSON))
 		if err != nil {
 			return err
 		}
@@ -115,6 +116,22 @@ func (s *rollPatchStrategy) upgradeService(namespace, svcName, svcJSON string) e
 		}
 	}
 	return nil
+}
+
+func onlyMetadata(svcJSON string) string {
+	var svc map[string]interface{}
+	err := json.Unmarshal([]byte(svcJSON), &svc)
+	utils.CheckError(err)
+
+	filtered := map[string]interface{}{
+		"apiVersion": svc["apiVersion"],
+		"kind":       svc["kind"],
+		"metadata":   svc["metadata"],
+	}
+
+	filteredJSON, err := json.Marshal(filtered)
+	utils.CheckError(err)
+	return string(filteredJSON)
 }
 
 func (s *rollPatchStrategy) rollReplicationController(ns, oldRCid, newRCid string, targetReplicas uint) error {
