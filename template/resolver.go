@@ -40,6 +40,11 @@ func ResolveTemplate(templatePath string, attributes digger.Digger) (string, err
 }
 
 func BuildAttributes(filePath string, defaults digger.Digger) digger.Digger {
+	// just defaults if no attributes given
+	if filePath == "" {
+		return defaults
+	}
+
 	roleList, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatalf("could not read file '%s' (%v)", filePath, err)
