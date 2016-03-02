@@ -39,12 +39,18 @@ func CmdDelete(c *cli.Context) {
 	utils.CheckError(err)
 	log.Debugf("Controllers: %v", controllerList)
 
+	// If no resources found that means it's not deployed
+	if len(*serviceList) == 0 || len(*controllerList) == 0 {
+		log.Warnf("Could not delete kubeware '%s %s' since it is not currently deployed", md.Name, md.Version)
+		return
+	}
+
 	// delete them
 	ds := deletionStrategies.WaitZeroReplicasDeletionStrategy(kubernetes)
 	err = ds.Delete(namespace, svcNames(serviceList), rcNames(controllerList))
 	utils.CheckError(err)
 
-	fmt.Printf("Kubeware %s from %s has been deleted", md.Name, os.Getenv("KDEPLOY_KUBEWARE"))
+	log.Infof("Kubeware '%s %s' has been deleted", md.Name, md.Version)
 }
 
 func rcNames(rcl *[]models.ReplicaController) []string {
