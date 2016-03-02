@@ -345,7 +345,7 @@ func (k *kubeClient) FindDeployedKubewareVersion(namespace, kubename string) (st
 	}
 	v, found := versions[kubename]
 	if !found {
-		return "", fmt.Errorf("could not find kubeware '%s.%s'", namespace, kubename)
+		return "", nil
 	}
 	return v, nil
 }

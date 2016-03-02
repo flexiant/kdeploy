@@ -36,6 +36,13 @@ func CmdDeploy(c *cli.Context) {
 	// creates Kubernetes client
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
+	// check if kubeware already exists
+	deployedVersion, err := kubernetes.FindDeployedKubewareVersion(os.Getenv("KDEPLOY_NAMESPACE"), metadata.Name)
+	utils.CheckError(err)
+	if deployedVersion != "" {
+		log.Errorf("Can not deploy '%s' since version '%s' is already deployed", metadata.Name, deployedVersion)
+		return
+	}
 	// create each of the services
 	log.Debugf("Creating services")
 	err = kubernetes.CreateServices(utils.Values(servicesSpecs))
