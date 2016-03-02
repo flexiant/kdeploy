@@ -35,6 +35,7 @@ type KubeClient interface {
 	ReplaceService(namespace, svcName, svcJSON string) error
 	GetPodsForNamespace(namespace, labelSelector string) (*[]models.Pod, error)
 	GetPodsForController(namespace, rcName string) (*[]models.Pod, error)
+	PatchService(namespace, svcName, svcJSON string) error
 }
 
 // kubeClient implements KubeClient interface
@@ -408,6 +409,18 @@ func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 	}
 	if status != 200 && status != 201 {
 		return fmt.Errorf("wrong http status code: %v (body: %s)", status, body)
+	}
+	return nil
+}
+
+func (k *kubeClient) PatchService(namespace, svcName, svcJSON string) error {
+	path := fmt.Sprintf("api/v1/namespaces/%s/services/%s", namespace, svcName)
+	resp, status, err := k.service.Patch(path, []byte(svcJSON))
+	if err != nil {
+		return err
+	}
+	if status != 200 {
+		return fmt.Errorf("wrong http status code: %v (%s)", status, resp)
 	}
 	return nil
 }

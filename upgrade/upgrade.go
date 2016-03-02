@@ -59,6 +59,6 @@ func CmdUpgrade(c *cli.Context) {
 	utils.CheckError(err)
 
 	// upgStrategy := upgradeStrategies.RecreateAllStrategy(kubernetes)
-	upgStrategy := upgradeStrategies.RollRcReplaceSvcStrategy(kubernetes, 1)
+	upgStrategy := upgradeStrategies.RollRcPatchSvcStrategy(kubernetes, 1)
 	upgStrategy.Upgrade(namespace, servicesSpecs, controllersSpecs)
 }
