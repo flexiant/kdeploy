@@ -71,13 +71,17 @@ func (m Metadata) RequiredAttributes() ([]string, error) {
 }
 
 // CheckRequiredAttributes returns an error if some required attribute is missing
-func (m Metadata) CheckRequiredAttributes(attributes digger.Digger) error {
+func (m Metadata) CheckRequiredAttributes(attributes map[string]interface{}) error {
 	reqs, err := m.RequiredAttributes()
 	if err != nil {
 		return fmt.Errorf("could not calculate required attributes: %v", err)
 	}
+	digger, err := digger.NewMapDigger(attributes)
+	if err != nil {
+		return fmt.Errorf("could not build digger: %v", err)
+	}
 	for _, att := range reqs {
-		_, err := attributes.Get(att)
+		_, err := digger.Get(att)
 		if err != nil {
 			return fmt.Errorf("required attribute not present: '%s'", att)
 		}
@@ -86,19 +90,15 @@ func (m Metadata) CheckRequiredAttributes(attributes digger.Digger) error {
 }
 
 // AttributeDefaults returns default values for attributes
-func (m Metadata) AttributeDefaults() (digger.Digger, error) {
+func (m Metadata) AttributeDefaults() (map[string]interface{}, error) {
 	defaults, err := defaultsMapFromMetadata(m.Attributes)
 	if err != nil {
 		return nil, fmt.Errorf("could not build defaults: %v", err)
 	}
-	digger, err := digger.NewMapDigger(defaults)
-	if err != nil {
-		return nil, fmt.Errorf("could not build digger: %v", err)
-	}
-	return digger, nil
+	return defaults, nil
 }
 
-func defaultsMapFromMetadata(md AttributesMetadata) (interface{}, error) {
+func defaultsMapFromMetadata(md AttributesMetadata) (map[string]interface{}, error) {
 	defaults := make(map[string]interface{})
 
 	for resourceType, resources := range md {
@@ -123,7 +123,7 @@ func defaultsMapFromMetadata(md AttributesMetadata) (interface{}, error) {
 }
 
 // ParseServices parses the service templates in the kube and returns their JSON representations
-func (m Metadata) ParseServices(attributes digger.Digger) (map[string]string, error) {
+func (m Metadata) ParseServices(attributes map[string]interface{}) (map[string]string, error) {
 	err := m.CheckRequiredAttributes(attributes)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func marshalMapValues(m map[string]interface{}) (map[string]string, error) {
 }
 
 // ParseControllers parses the replication controllers in the kube and returns their JSON representations
-func (m Metadata) ParseControllers(attributes digger.Digger) (map[string]string, error) {
+func (m Metadata) ParseControllers(attributes map[string]interface{}) (map[string]string, error) {
 	err := m.CheckRequiredAttributes(attributes)
 	if err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func (m Metadata) ParseControllers(attributes digger.Digger) (map[string]string,
 	return marshalMapValues(specMap)
 }
 
-func (m Metadata) parseTemplates(templates map[string]string, attributes digger.Digger) (map[string]interface{}, error) {
+func (m Metadata) parseTemplates(templates map[string]string, attributes map[string]interface{}) (map[string]interface{}, error) {
 	var specs = map[string]interface{}{}
 	for specName, templateFile := range templates {
 		log.Debugf("Going to parse %s/%s", m.path, templateFile)
@@ -192,7 +192,7 @@ func (m Metadata) parseTemplates(templates map[string]string, attributes digger.
 	return specs, nil
 }
 
-func parseTemplate(templateFile string, attributes digger.Digger) (map[string]interface{}, error) {
+func parseTemplate(templateFile string, attributes map[string]interface{}) (map[string]interface{}, error) {
 	specYaml, err := ResolveTemplate(templateFile, attributes)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving template %s: %v", templateFile, err)
@@ -203,6 +203,9 @@ func parseTemplate(templateFile string, attributes digger.Digger) (map[string]in
 		return nil, fmt.Errorf("error parsing yaml for %s: %v", templateFile, err)
 	}
 	normalizedMap, err := normalizeValue(specMap)
+	if err != nil {
+		return nil, fmt.Errorf("error normalizing yaml for %s: %v", templateFile, err)
+	}
 	return normalizedMap.(map[string]interface{}), nil
 }
 
@@ -233,7 +236,7 @@ func normalizeValue(value interface{}) (interface{}, error) {
 			}
 			item, err := normalizeValue(v)
 			if err != nil {
-				return nil, fmt.Errorf("Unsupported map value: %#v", v)
+				return nil, fmt.Errorf("Unsupported map value: %#v (%v)", v, err)
 			}
 			node[key] = item
 		}
