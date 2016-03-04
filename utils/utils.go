@@ -103,3 +103,10 @@ func Values(m map[string]string) []string {
 	}
 	return vals
 }
+
+func NormalizeName(name string) string {
+	s := strings.TrimSpace(name)
+	s = strings.Replace(s, " ", "-", -1)
+	s = strings.ToLower(s)
+	return s
+}

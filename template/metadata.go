@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/flexiant/digger"
@@ -211,7 +210,7 @@ func parseTemplate(templateFile string, attributes map[string]interface{}) (map[
 }
 
 func addKubewareLabel(name, version string, specmap map[string]interface{}) error {
-	fixedName := normalizeName(name)
+	fixedName := utils.NormalizeName(name)
 	metadata := specmap["metadata"].(map[string]interface{})
 	if metadata["labels"] != nil {
 		labels := metadata["labels"].(map[string]interface{})
@@ -225,13 +224,6 @@ func addKubewareLabel(name, version string, specmap map[string]interface{}) erro
 	}
 
 	return nil
-}
-
-func normalizeName(name string) string {
-	s := strings.TrimSpace(name)
-	s = strings.Replace(s, " ", "-", -1)
-	s = strings.ToLower(s)
-	return s
 }
 
 func normalizeValue(value interface{}) (interface{}, error) {

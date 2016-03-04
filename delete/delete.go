@@ -27,7 +27,7 @@ func CmdDelete(c *cli.Context) {
 	utils.CheckError(err)
 
 	namespace := os.Getenv("KDEPLOY_NAMESPACE")
-	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", md.Name, md.Version)
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", utils.NormalizeName(md.Name), md.Version)
 
 	// get services which are currently deployed as part of the kube
 	serviceList, err := kubernetes.GetServicesForNamespace(namespace, labelSelector)
