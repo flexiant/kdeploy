@@ -216,7 +216,7 @@ func addKubewareLabel(name, version string, specmap map[string]interface{}) erro
 		labels["kubeware"] = name
 		labels["kubeware-version"] = version
 	} else {
-		metadata["labels"] = map[string]string{
+		metadata["labels"] = map[string]interface{}{
 			"kubeware":         name,
 			"kubeware-version": version,
 		}
