@@ -305,7 +305,8 @@ func (k *kubeClient) CreateReplicaControllers(rcSpecs []string) error {
 	return nil
 }
 
-func (k *kubeClient) FindDeployedKubewareVersion(namespace, kubename string) (string, error) {
+func (k *kubeClient) FindDeployedKubewareVersion(namespace, name string) (string, error) {
+	kubename := utils.NormalizeName(name)
 	versions := map[string]string{}
 	services, err := k.GetServicesForNamespace(namespace)
 	if err != nil {

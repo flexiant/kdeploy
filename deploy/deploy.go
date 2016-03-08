@@ -36,6 +36,7 @@ func CmdDeploy(c *cli.Context) {
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 	// check if kubeware already exists
+	log.Debugf("Checking if already deployed")
 	deployedVersion, err := kubernetes.FindDeployedKubewareVersion(os.Getenv("KDEPLOY_NAMESPACE"), metadata.Name)
 	utils.CheckError(err)
 	if deployedVersion != "" {
