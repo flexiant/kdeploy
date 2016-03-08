@@ -25,6 +25,12 @@ func Flags() []cli.Flag {
 			Value:  "default",
 			EnvVar: "KDEPLOY_NAMESPACE",
 		},
+		cli.StringFlag{
+			Name:   "strategy, s",
+			Usage:  "Upgrade strategy to use",
+			Value:  "recreateAll",
+			EnvVar: "KDEPLOY_UPGRADE_STRATEGY",
+		},
 		cli.BoolFlag{
 			Name:   "dry-run, d",
 			Usage:  "Dry Run of Deploy used for debugging options",
@@ -41,6 +47,10 @@ func PrepareFlags(c *cli.Context) error {
 
 	if c.String("kubeware") != "" {
 		os.Setenv("KDEPLOY_KUBEWARE", c.String("kubeware"))
+	}
+
+	if c.String("strategy") != "" {
+		os.Setenv("KDEPLOY_UPGRADE_STRATEGY", c.String("strategy"))
 	}
 
 	if c.Bool("dry-run") {

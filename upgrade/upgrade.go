@@ -58,7 +58,8 @@ func CmdUpgrade(c *cli.Context) {
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
 
-	upgStrategy := upgradeStrategies.RecreateAllStrategy(kubernetes)
+	// upgStrategy := upgradeStrategies.RecreateAllStrategy(kubernetes)
 	// upgStrategy := upgradeStrategies.RollRcPatchSvcStrategy(kubernetes, 1)
+	upgStrategy := upgradeStrategies.BuildUpgradeStrategy(os.Getenv("KDEPLOY_UPGRADE_STRATEGY"), kubernetes)
 	upgStrategy.Upgrade(namespace, servicesSpecs, controllersSpecs)
 }
