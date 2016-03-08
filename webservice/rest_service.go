@@ -57,7 +57,7 @@ func httpClient(config utils.Config) (*http.Client, error) {
 
 	var transport http.Transport
 	if config.Connection.Insecure {
-		// create a client with specific transport configurations
+		// create a client with insecure connection
 		transport = http.Transport{
 			TLSClientConfig: &tls.Config{
 				Certificates:       []tls.Certificate{cert},
@@ -65,19 +65,28 @@ func httpClient(config utils.Config) (*http.Client, error) {
 			},
 		}
 	} else {
-		// load CA file to verify server
-		caPool := x509.NewCertPool()
-		severCert, err := ioutil.ReadFile(config.Connection.CACert)
-		if err != nil {
-			return nil, err
-		}
-		caPool.AppendCertsFromPEM(severCert)
-		// create a client with specific transport configurations
-		transport = http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:      caPool,
-				Certificates: []tls.Certificate{cert},
-			},
+		if config.Connection.CACert != "" {
+			// load CA file to verify server
+			caPool := x509.NewCertPool()
+			severCert, _ := ioutil.ReadFile(config.Connection.CACert)
+			if err != nil {
+				return nil, fmt.Errorf("can not open file '%s': %v", config.Connection.CACert, err)
+			}
+			caPool.AppendCertsFromPEM(severCert)
+			// create a client with specific transport configurations
+			transport = http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:      caPool,
+					Certificates: []tls.Certificate{cert},
+				},
+			}
+		} else {
+			// No root CA pool
+			transport = http.Transport{
+				TLSClientConfig: &tls.Config{
+					Certificates: []tls.Certificate{cert},
+				},
+			}
 		}
 	}
 	client := &http.Client{Transport: &transport}

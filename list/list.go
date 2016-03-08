@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
@@ -82,6 +83,6 @@ func CmdList(c *cli.Context) {
 		}
 		w.Flush()
 	} else {
-		fmt.Printf("No Kubeware's deployed")
+		log.Infof("No Kubeware deployed")
 	}
 }

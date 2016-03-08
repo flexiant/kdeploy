@@ -60,7 +60,7 @@ func main() {
 			Usage: "Enable debug mode",
 		},
 		cli.BoolFlag{
-			Name:  "insecure, k",
+			Name:  "insecure",
 			Usage: "Do not validate server certificates",
 		},
 		cli.StringFlag{

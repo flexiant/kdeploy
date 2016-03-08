@@ -280,10 +280,6 @@ func InitializeConfig(c *cli.Context) error {
 		log.Warn("Please use parameter --kubernetes-endpoint")
 		parameters = true
 	}
-	if cachedConfig.Connection.CACert == "" {
-		log.Warn("Please use parameter --ca-cert")
-		parameters = true
-	}
 	if cachedConfig.Connection.Cert == "" {
 		log.Warn("Please use parameter --client-cert")
 		parameters = true

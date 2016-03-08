@@ -56,7 +56,6 @@ func CmdDelete(c *cli.Context) {
 func rcNames(rcl *[]models.ReplicaController) []string {
 	names := []string{}
 	for _, rc := range *rcl {
-		fmt.Printf("rc: %s\n", rc.Metadata.Name)
 		names = append(names, rc.Metadata.Name)
 	}
 	return names
@@ -65,7 +64,6 @@ func rcNames(rcl *[]models.ReplicaController) []string {
 func svcNames(sl *[]models.Service) []string {
 	names := []string{}
 	for _, s := range *sl {
-		fmt.Printf("s: %s\n", s.Metadata.Name)
 		names = append(names, s.Metadata.Name)
 	}
 	return names
