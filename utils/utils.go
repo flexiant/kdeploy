@@ -23,7 +23,7 @@ func GetMD5Hash(text string) string {
 func CheckRequiredFlags(c *cli.Context, flags []string) {
 	missing := ""
 	for _, flag := range flags {
-		if c.String(flag) != "" {
+		if c.String(flag) == "" {
 			missing = fmt.Sprintf("%s\t--%s\n", missing, flag)
 		}
 	}
