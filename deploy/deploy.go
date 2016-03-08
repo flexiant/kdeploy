@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"fmt"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
@@ -52,5 +51,5 @@ func CmdDeploy(c *cli.Context) {
 	err = kubernetes.CreateReplicaControllers(utils.Values(controllersSpecs))
 	utils.CheckError(err)
 
-	fmt.Printf("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
+	log.Infof("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
 }

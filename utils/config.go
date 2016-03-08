@@ -19,6 +19,7 @@ type Connection struct {
 	CACert      string
 	Cert        string
 	Key         string
+	Insecure    bool
 }
 
 // Config for kdeploy
@@ -271,6 +272,9 @@ func InitializeConfig(c *cli.Context) error {
 	if overwKubernetesEndpoint := c.String("kubernetes-endpoint"); overwKubernetesEndpoint != "" {
 		cachedConfig.Connection.APIEndpoint = overwKubernetesEndpoint
 	}
+
+	// insecure connection flag
+	cachedConfig.Connection.Insecure = c.Bool("insecure")
 
 	if cachedConfig.Connection.APIEndpoint == "" {
 		log.Warn("Please use parameter --kubernetes-endpoint")

@@ -59,6 +59,10 @@ func main() {
 			Name:  "debug, D",
 			Usage: "Enable debug mode",
 		},
+		cli.BoolFlag{
+			Name:  "insecure, k",
+			Usage: "Do not validate server certificates",
+		},
 		cli.StringFlag{
 			EnvVar: "KUBERNETES_CA_CERT",
 			Name:   "ca-cert",

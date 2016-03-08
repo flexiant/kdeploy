@@ -54,21 +54,33 @@ func httpClient(config utils.Config) (*http.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	// load CA file to verify server
-	caPool := x509.NewCertPool()
-	severCert, err := ioutil.ReadFile(config.Connection.CACert)
-	if err != nil {
-		return nil, err
+
+	var transport http.Transport
+	if config.Connection.Insecure {
+		// create a client with specific transport configurations
+		transport = http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				InsecureSkipVerify: true,
+			},
+		}
+	} else {
+		// load CA file to verify server
+		caPool := x509.NewCertPool()
+		severCert, err := ioutil.ReadFile(config.Connection.CACert)
+		if err != nil {
+			return nil, err
+		}
+		caPool.AppendCertsFromPEM(severCert)
+		// create a client with specific transport configurations
+		transport = http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caPool,
+				Certificates: []tls.Certificate{cert},
+			},
+		}
 	}
-	caPool.AppendCertsFromPEM(severCert)
-	// create a client with specific transport configurations
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs:      caPool,
-			Certificates: []tls.Certificate{cert},
-		},
-	}
-	client := &http.Client{Transport: transport}
+	client := &http.Client{Transport: &transport}
 
 	return client, nil
 }
