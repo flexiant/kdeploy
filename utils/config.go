@@ -189,6 +189,7 @@ func readConfigFromKubeConfig(kc *KubeConfig) *Config {
 			if cluster.Name == clusterID {
 				config.Connection.APIEndpoint = cluster.Cluster.Server
 				config.Connection.CACert = cluster.Cluster.CertificateAuthority
+				config.Connection.Insecure = cluster.Cluster.InsecureSkipTLSVerify
 			}
 		}
 	}
@@ -274,7 +275,7 @@ func InitializeConfig(c *cli.Context) error {
 	}
 
 	// insecure connection flag
-	cachedConfig.Connection.Insecure = c.Bool("insecure")
+	cachedConfig.Connection.Insecure = cachedConfig.Connection.Insecure || c.Bool("insecure")
 
 	if cachedConfig.Connection.APIEndpoint == "" {
 		log.Warn("Please use parameter --kubernetes-endpoint")
