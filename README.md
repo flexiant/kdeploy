@@ -13,7 +13,7 @@ Drop `kdeploy` somewhere in your `$PATH` and grant execute permissions
 ```
 $ curl -o /usr/local/bin/kdeploy  https://drone.io/github.com/flexiant/kdeploy/files/_output/kdeploy.x64.darwin
 $ chmod +x /usr/local/bin/kdeploy
-``` 
+```
 
 What is a kubeware?
 -------------------
@@ -128,12 +128,12 @@ Let's create the "poor man's" scenario for the , where we only one redis slave r
 }
 ```
 
-Also, create a differente JSON file that runs 10 redis slave replicas.
+Also, create a different "rich man's" JSON file that runs 10 redis slave replicas.
 ```
 {
   "rc":{
     "redis-slave":{
-      "number":5
+      "number":10
     }
   }
 }
@@ -143,6 +143,9 @@ That's it. You can use the Kuberware template and overwrite default values using
 
 How do I use kdeploy?
 ---------------------
+Download `kdeploy` and create a kubernetes configuration file, like the ones used by `kubectl`, using client certificates.
+If `kubectl` is working, `kdeploy` is working too.
+
 Upload the kubeware to a folder in github (we only support github for now)
 
 To deploy the application with a set of attributes use
@@ -166,5 +169,6 @@ kdeploy delete --kubeware https://github.com/flexiant/kubeware-guestbook --names
 What else can I do with kdeploy
 -------------------------------
 kdeploy was born as an internal tool to save time deploying k8s applications at [Flexiant](http://www.flexiant.com). We are planning to bring in some new features to kdeploy, as long as we keep it simple and agile.
+
 
 Contributors are welcome anytime.
