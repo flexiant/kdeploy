@@ -14,6 +14,7 @@ import (
 
 // CmdShow implements the 'show' command
 func CmdShow(c *cli.Context) {
+	utils.CheckRequiredFlags(c, []string{"kubeware"})
 	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
 	utils.CheckError(err)
 
