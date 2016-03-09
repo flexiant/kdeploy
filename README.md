@@ -2,7 +2,18 @@ KDeploy
 =======
 [![Build Status](https://drone.io/github.com/flexiant/kdeploy/status.png)](https://drone.io/github.com/flexiant/kdeploy/latest)
 
-KDeploy, a tool that let's you deploy kubewares in your kubernetes cluster.
+`kdeploy`, a tool that let's you deploy kubewares in your kubernetes cluster.
+
+You can download `kdeploy` binary for
+- [Linux](https://drone.io/github.com/flexiant/kdeploy/files/_output/kdeploy.x64.linux)
+- [OS X](https://drone.io/github.com/flexiant/kdeploy/files/_output/kdeploy.x64.darwin)
+- [Windows](https://drone.io/github.com/flexiant/kdeploy/files/_output/kdeploy.x64.windows.exe)
+
+Drop `kdeploy` somewhere in your `$PATH` and grant execute permissions
+```
+$ curl -o /usr/local/bin/kdeploy  https://drone.io/github.com/flexiant/kdeploy/files/_output/kdeploy.x64.darwin
+$ chmod +x /usr/local/bin/kdeploy
+``` 
 
 What is a kubeware?
 -------------------
@@ -103,7 +114,8 @@ attributes:
 
 ### Create Attributes file
 
-Attributes files are customized for each environment. Let's create an "poor man's" scenario, where we don't want many replicas running.
+Attributes files are JSON files that customize variables for each environment.
+Let's create the "poor man's" scenario for the , where we only one redis slave replica running.
 
 ```
 {
@@ -115,16 +127,19 @@ Attributes files are customized for each environment. Let's create an "poor man'
   }
 }
 ```
-On the other hand wealthy Scrooge has plenty of nodes and can create a true redis cluster
+
+Also, create a differente JSON file that runs 10 redis slave replicas.
 ```
 {
   "rc":{
     "redis-slave":{
-      "number":15
+      "number":5
     }
   }
 }
 ```
+
+That's it. You can use the Kuberware template and overwrite default values using your JSON of choice.
 
 How do I use kdeploy?
 ---------------------
