@@ -20,9 +20,11 @@ func CmdList(c *cli.Context) {
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 	// Get all services to extract their kubeware labels
+	log.Debug("Get all services to extract their kubeware labels ...")
 	serviceList, err := kubernetes.GetServices()
 	utils.CheckError(err)
 	// Get all controllers to extract their kubeware labels
+	log.Debug("Get all controllers to extract their kubeware labels ...")
 	controllersList, err := kubernetes.GetControllers()
 	utils.CheckError(err)
 	// build the list to be printed

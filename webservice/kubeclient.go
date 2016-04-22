@@ -71,7 +71,11 @@ func (k *kubeClient) GetServices(labelSelector ...string) (*[]models.Service, er
 		return nil, fmt.Errorf("error getting services: %s", err)
 	}
 
-	return models.NewServicesJSON(string(json))
+	srv, err := models.NewServicesJSON(string(json))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing json: %s %s", err, json)
+	}
+	return srv, nil
 }
 
 func (k *kubeClient) GetServicesForNamespace(namespace string, labelSelector ...string) (*[]models.Service, error) {

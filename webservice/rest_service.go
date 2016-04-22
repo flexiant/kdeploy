@@ -237,6 +237,10 @@ func (r *RestService) Get(urlPath string, params map[string]string) ([]byte, int
 	}
 	defer response.Body.Close()
 
+	if response.StatusCode != http.StatusOK {
+		return nil, response.StatusCode, fmt.Errorf("unexpected http error code: %v (%s)", response.StatusCode, http.StatusText(response.StatusCode))
+	}
+
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, -1, err
