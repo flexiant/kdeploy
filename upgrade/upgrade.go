@@ -31,6 +31,9 @@ func CmdUpgrade(c *cli.Context) {
 	// Check if kubeware already installed, error if it's not
 	v, err := kubernetes.FindDeployedKubewareVersion(namespace, md.Name)
 	utils.CheckError(err)
+	if v == "" {
+		log.Fatalf("Kubeware '%s.%s' is not deployed and thus it can't be upgraded", namespace, md.Name)
+	}
 	log.Infof("Found version %s of %s.%s", v, namespace, md.Name)
 
 	// Check if equal or newer version already exists, error if so
@@ -62,4 +65,6 @@ func CmdUpgrade(c *cli.Context) {
 	// upgStrategy := upgradeStrategies.RollRcPatchSvcStrategy(kubernetes, 1)
 	upgStrategy := upgradeStrategies.BuildUpgradeStrategy(os.Getenv("KDEPLOY_UPGRADE_STRATEGY"), kubernetes)
 	upgStrategy.Upgrade(namespace, servicesSpecs, controllersSpecs)
+
+	log.Infof("Kubeware '%s.%s' has been upgraded from version '%s' to '%s'", namespace, md.Name, v, md.Version)
 }
