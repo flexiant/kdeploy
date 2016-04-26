@@ -5,6 +5,7 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/asaskevich/govalidator"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/delete/strategies"
 	"github.com/flexiant/kdeploy/models"
@@ -15,19 +16,25 @@ import (
 
 // CmdDelete implements 'delete' command
 func CmdDelete(c *cli.Context) {
-	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
-	utils.CheckError(err)
+	log.Debugf("deleting : %s", os.Getenv("KDEPLOY_KUBEWARE"))
+	var kubewareName string
+	var kubewareVersion string
+	var kubewareURL string
+	var labelSelector string
 
-	log.Debugf("Going to parse kubeware in %s", localKubePath)
+	namespace := os.Getenv("KDEPLOY_NAMESPACE")
 
-	md := template.ParseMetadata(localKubePath)
-	utils.CheckError(err)
+	if govalidator.IsURL(os.Getenv("KDEPLOY_KUBEWARE")) {
+		kubewareURL = os.Getenv("KDEPLOY_KUBEWARE")
+		labelSelector, kubewareName, kubewareVersion = labelSelectorFromURL(kubewareURL)
+	} else {
+		// not URL so we will interpret it as a name
+		kubewareName = utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
+		labelSelector = labelSelectorFromName(kubewareName)
+	}
 
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
-
-	namespace := os.Getenv("KDEPLOY_NAMESPACE")
-	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", utils.NormalizeName(md.Name), md.Version)
 
 	// get services which are currently deployed as part of the kube
 	serviceList, err := kubernetes.GetServicesForNamespace(namespace, labelSelector)
@@ -41,7 +48,11 @@ func CmdDelete(c *cli.Context) {
 
 	// If no resources found that means it's not deployed
 	if len(*serviceList) == 0 || len(*controllerList) == 0 {
-		log.Warnf("Could not delete kubeware '%s %s' since it is not currently deployed", md.Name, md.Version)
+		var version string
+		if kubewareVersion != "" {
+			version = fmt.Sprintf(" (%s)", kubewareVersion)
+		}
+		log.Warnf("Could not delete kubeware '%s'%s since it is not currently deployed", kubewareName, version)
 		return
 	}
 
@@ -50,7 +61,7 @@ func CmdDelete(c *cli.Context) {
 	err = ds.Delete(namespace, svcNames(serviceList), rcNames(controllerList))
 	utils.CheckError(err)
 
-	log.Infof("Kubeware '%s %s' has been deleted", md.Name, md.Version)
+	log.Infof("Kubeware '%s.%s' has been deleted", namespace, kubewareName)
 }
 
 func rcNames(rcl *[]models.ReplicaController) []string {
@@ -67,4 +78,22 @@ func svcNames(sl *[]models.Service) []string {
 		names = append(names, s.Metadata.Name)
 	}
 	return names
+}
+
+func labelSelectorFromName(name string) string {
+	return fmt.Sprintf("kubeware=%s", name)
+}
+
+func labelSelectorFromURL(kubewareURL string) (string, string, string) {
+	localKubePath, err := webservice.FetchKubeFromURL(kubewareURL)
+	utils.CheckError(err)
+
+	log.Debugf("Going to parse kubeware in %s", localKubePath)
+
+	md := template.ParseMetadata(localKubePath)
+	utils.CheckError(err)
+
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", utils.NormalizeName(md.Name), md.Version)
+
+	return labelSelector, md.Name, md.Version
 }
