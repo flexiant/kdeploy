@@ -210,7 +210,10 @@ func parseTemplate(templateFile string, attributes map[string]interface{}) (map[
 }
 
 func addKubewareLabel(name, version string, specmap map[string]interface{}) error {
-	fixedName := utils.NormalizeName(name)
+	fixedName, err := utils.NormalizeName(name)
+	if err != nil {
+		return err
+	}
 	metadata := specmap["metadata"].(map[string]interface{})
 	if metadata["labels"] != nil {
 		labels := metadata["labels"].(map[string]interface{})

@@ -310,7 +310,10 @@ func (k *kubeClient) CreateReplicaControllers(rcSpecs []string) error {
 }
 
 func (k *kubeClient) FindDeployedKubewareVersion(namespace, name string) (string, error) {
-	kubename := utils.NormalizeName(name)
+	kubename, err := utils.NormalizeName(name)
+	if err != nil {
+		return "", err
+	}
 	versions := map[string]string{}
 	services, err := k.GetServicesForNamespace(namespace)
 	if err != nil {

@@ -104,9 +104,13 @@ func Values(m map[string]string) []string {
 	return vals
 }
 
-func NormalizeName(name string) string {
+// NormalizeName normalizes a kubeware name to fit k8s restrictions for label values
+func NormalizeName(name string) (string, error) {
 	s := strings.TrimSpace(name)
 	s = strings.Replace(s, " ", "-", -1)
 	s = strings.ToLower(s)
-	return s
+	if len(s) > 63 {
+		return "", fmt.Errorf("Kubeware name too long: %s", name)
+	}
+	return s, nil
 }

@@ -29,7 +29,8 @@ func CmdDelete(c *cli.Context) {
 		labelSelector, kubewareName, kubewareVersion = labelSelectorFromURL(kubewareURL)
 	} else {
 		// not URL so we will interpret it as a name
-		kubewareName = utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
+		kubewareName, err := utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
+		utils.CheckError(err)
 		labelSelector = labelSelectorFromName(kubewareName)
 	}
 
@@ -93,7 +94,9 @@ func labelSelectorFromURL(kubewareURL string) (string, string, string) {
 	md := template.ParseMetadata(localKubePath)
 	utils.CheckError(err)
 
-	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", utils.NormalizeName(md.Name), md.Version)
+	normalizedName, err := utils.NormalizeName(md.Name)
+	utils.CheckError(err)
+	labelSelector := fmt.Sprintf("kubeware=%s,kubeware-version=%s", normalizedName, md.Version)
 
 	return labelSelector, md.Name, md.Version
 }
