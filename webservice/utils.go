@@ -22,6 +22,9 @@ func FetchKubeFromURL(kubeURL string) (string, error) {
 	}
 
 	path := strings.Split(kubewareURL.Path, "/")
+	if len(path) != 3 {
+		return "", fmt.Errorf("Github URL should have the following format: 'https://github.com/<user>/<repo_name>'")
+	}
 	kubewareName := path[2]
 
 	newPath := append([]string{""}, path[1], path[2], "archive", "master.zip")
