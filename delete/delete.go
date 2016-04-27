@@ -21,6 +21,7 @@ func CmdDelete(c *cli.Context) {
 	var kubewareVersion string
 	var kubewareURL string
 	var labelSelector string
+	var err error
 
 	namespace := os.Getenv("KDEPLOY_NAMESPACE")
 
@@ -29,7 +30,7 @@ func CmdDelete(c *cli.Context) {
 		labelSelector, kubewareName, kubewareVersion = labelSelectorFromURL(kubewareURL)
 	} else {
 		// not URL so we will interpret it as a name
-		kubewareName, err := utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
+		kubewareName, err = utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
 		utils.CheckError(err)
 		labelSelector = labelSelectorFromName(kubewareName)
 	}
