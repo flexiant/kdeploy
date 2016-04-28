@@ -2,11 +2,9 @@ package deploy
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/asaskevich/govalidator"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
@@ -18,23 +16,19 @@ import (
 func CmdDeploy(c *cli.Context) {
 	utils.CheckRequiredFlags(c, []string{"kubeware"})
 
-	var kubeware string = os.Getenv("KDEPLOY_KUBEWARE")
+	var kubeware string
 	var localKubePath string
 	var err error
 
-	if !govalidator.IsURL(kubeware) {
-		log.Fatal(fmt.Errorf("Not a valid URL: '%s'", kubeware))
-	}
-	kubewareURL, err := url.Parse(kubeware)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Error parsing URL: '%s'", kubeware))
-	}
-
+	kubeware = os.Getenv("KDEPLOY_KUBEWARE")
 	for _, fetcher := range fetchers.AllFetchers {
-		if fetcher.CanHandle(kubewareURL) {
-			localKubePath, err = fetcher.Fetch(kubewareURL)
+		if fetcher.CanHandle(kubeware) {
+			localKubePath, err = fetcher.Fetch(kubeware)
 			utils.CheckError(err)
 		}
+	}
+	if localKubePath == "" {
+		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s'", kubeware))
 	}
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
