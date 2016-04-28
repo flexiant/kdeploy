@@ -5,9 +5,9 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/asaskevich/govalidator"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/delete/strategies"
+	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
@@ -17,20 +17,24 @@ import (
 // CmdDelete implements 'delete' command
 func CmdDelete(c *cli.Context) {
 	log.Debugf("deleting : %s", os.Getenv("KDEPLOY_KUBEWARE"))
+
 	var kubewareName string
 	var kubewareVersion string
-	var kubewareURL string
 	var labelSelector string
 	var err error
 
 	namespace := os.Getenv("KDEPLOY_NAMESPACE")
+	kubeware := os.Getenv("KDEPLOY_KUBEWARE")
+	localKubePath, err := fetchers.Fetch(kubeware)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+	}
 
-	if govalidator.IsURL(os.Getenv("KDEPLOY_KUBEWARE")) {
-		kubewareURL = os.Getenv("KDEPLOY_KUBEWARE")
-		labelSelector, kubewareName, kubewareVersion = labelSelectorFromURL(kubewareURL)
+	if localKubePath != "" {
+		labelSelector, kubewareName, kubewareVersion = labelSelectorFromKubeware(localKubePath)
 	} else {
-		// not URL so we will interpret it as a name
-		kubewareName, err = utils.NormalizeName(os.Getenv("KDEPLOY_KUBEWARE"))
+		// could not be fetched so we will interpret it as a name
+		kubewareName, err = utils.NormalizeName(kubeware)
 		utils.CheckError(err)
 		labelSelector = labelSelectorFromName(kubewareName)
 	}
@@ -86,14 +90,8 @@ func labelSelectorFromName(name string) string {
 	return fmt.Sprintf("kubeware=%s", name)
 }
 
-func labelSelectorFromURL(kubewareURL string) (string, string, string) {
-	localKubePath, err := webservice.FetchKubeFromURL(kubewareURL)
-	utils.CheckError(err)
-
-	log.Debugf("Going to parse kubeware in %s", localKubePath)
-
+func labelSelectorFromKubeware(localKubePath string) (string, string, string) {
 	md := template.ParseMetadata(localKubePath)
-	utils.CheckError(err)
 
 	normalizedName, err := utils.NormalizeName(md.Name)
 	utils.CheckError(err)

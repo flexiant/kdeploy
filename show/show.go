@@ -6,17 +6,21 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
-	"github.com/flexiant/kdeploy/webservice"
 	gyml "github.com/ghodss/yaml"
 )
 
 // CmdShow implements the 'show' command
 func CmdShow(c *cli.Context) {
 	utils.CheckRequiredFlags(c, []string{"kubeware"})
-	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
-	utils.CheckError(err)
+
+	kubeware := os.Getenv("KDEPLOY_KUBEWARE")
+	localKubePath, err := fetchers.Fetch(kubeware)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+	}
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
 
