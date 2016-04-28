@@ -21,14 +21,9 @@ func CmdDeploy(c *cli.Context) {
 	var err error
 
 	kubeware = os.Getenv("KDEPLOY_KUBEWARE")
-	for _, fetcher := range fetchers.AllFetchers {
-		if fetcher.CanHandle(kubeware) {
-			localKubePath, err = fetcher.Fetch(kubeware)
-			utils.CheckError(err)
-		}
-	}
-	if localKubePath == "" {
-		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s'", kubeware))
+	localKubePath, err = fetchers.Fetch(kubeware)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
 	}
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)

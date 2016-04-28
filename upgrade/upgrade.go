@@ -1,10 +1,12 @@
 package upgrade
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/upgrade/strategies"
 	"github.com/flexiant/kdeploy/utils"
@@ -14,8 +16,15 @@ import (
 
 // CmdUpgrade implements 'upgrade' command
 func CmdUpgrade(c *cli.Context) {
-	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
-	utils.CheckError(err)
+	var kubeware string
+	var localKubePath string
+	var err error
+
+	kubeware = os.Getenv("KDEPLOY_KUBEWARE")
+	localKubePath, err = fetchers.Fetch(kubeware)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+	}
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
 

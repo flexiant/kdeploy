@@ -7,8 +7,25 @@ type KubewareFetchers interface {
 	Fetch(kpath string) (string, error)
 }
 
-// AllFetchers is the collection of available fetchers
-var AllFetchers = []KubewareFetchers{
+// allFetchers is the collection of available fetchers
+var allFetchers = []KubewareFetchers{
 	&GithubFetcher{},
 	&LocaldirFetcher{},
+}
+
+// Fetch the indicated kubeware
+func Fetch(kpath string) (string, error) {
+	var localKubePath string
+	var err error
+
+	for _, fetcher := range allFetchers {
+		if fetcher.CanHandle(kpath) {
+			localKubePath, err = fetcher.Fetch(kpath)
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+
+	return localKubePath, nil
 }
