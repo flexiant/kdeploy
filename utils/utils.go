@@ -42,11 +42,7 @@ func FileExists(name string) bool {
 
 func CheckError(err error) {
 	if err != nil {
-		if os.Getenv("DEBUG") == "1" {
-			log.Fatal(err)
-		} else {
-			log.Fatal(err)
-		}
+		log.Fatal(err)
 	}
 }
 

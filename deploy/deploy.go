@@ -1,10 +1,14 @@
 package deploy
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/asaskevich/govalidator"
 	"github.com/codegangsta/cli"
+	"github.com/flexiant/kdeploy/resolvers"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
@@ -13,8 +17,25 @@ import (
 // CmdDeploy implements the 'deploy' command
 func CmdDeploy(c *cli.Context) {
 	utils.CheckRequiredFlags(c, []string{"kubeware"})
-	localKubePath, err := webservice.FetchKubeFromURL(os.Getenv("KDEPLOY_KUBEWARE"))
-	utils.CheckError(err)
+
+	var kubeware string = os.Getenv("KDEPLOY_KUBEWARE")
+	var localKubePath string
+	var err error
+
+	if !govalidator.IsURL(kubeware) {
+		log.Fatal(fmt.Errorf("Not a valid URL: '%s'", kubeware))
+	}
+	kubewareURL, err := url.Parse(kubeware)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Error parsing URL: '%s'", kubeware))
+	}
+
+	for _, urlResolver := range resolvers.URLResolvers {
+		if urlResolver.CanHandle(kubewareURL) {
+			localKubePath, err = urlResolver.Resolve(kubewareURL)
+			utils.CheckError(err)
+		}
+	}
 
 	log.Debugf("Going to parse kubeware in %s", localKubePath)
 
@@ -54,3 +75,13 @@ func CmdDeploy(c *cli.Context) {
 
 	log.Infof("Kubeware %s from %s has been deployed", metadata.Name, os.Getenv("KDEPLOY_KUBEWARE"))
 }
+
+// func isLocalURL(kube string) bool  {
+//   kubewareURL, err := url.Parse(kube)
+// 	return (err == nil && kubewareURL.Scheme == "file")
+// }
+//
+// func extractAbsolutePath(kube string) bool  {
+//   kubewareURL, err := url.Parse(kube)
+// 	if err == nil && kubewareURL.Scheme == "file")
+// }
