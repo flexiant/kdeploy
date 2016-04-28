@@ -1,4 +1,4 @@
-package resolvers
+package fetchers
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 	"github.com/flexiant/kdeploy/webservice"
 )
 
-// GithubResolver downloads and extracts a kubeware from a github repo
-type GithubResolver struct{}
+// GithubFetcher downloads and extracts a kubeware from a github repo
+type GithubFetcher struct{}
 
 // CanHandle tells if the URL can be handled by this resolver
-func (gh *GithubResolver) CanHandle(uri *url.URL) bool {
+func (gh *GithubFetcher) CanHandle(uri *url.URL) bool {
 	if uri.Host == "github.com" {
 		path := strings.Split(uri.Path, "/")
 		if len(path) != 3 {
@@ -25,11 +25,11 @@ func (gh *GithubResolver) CanHandle(uri *url.URL) bool {
 	return false
 }
 
-// Resolve downloads and extract archive/master zip from github repo into
+// Fetch downloads and extract archive/master zip from github repo into
 // a temporal local directory, and returns its path
-func (gh *GithubResolver) Resolve(uri *url.URL) (string, error) {
+func (gh *GithubFetcher) Fetch(uri *url.URL) (string, error) {
 	if !gh.CanHandle(uri) {
-		return "", fmt.Errorf("URL can't be handled by GithubResolver: '%s'", uri.String())
+		return "", fmt.Errorf("URL can't be handled by GithubFetcher: '%s'", uri.String())
 	}
 	path := strings.Split(uri.Path, "/")
 	kubewareName := path[2]

@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/asaskevich/govalidator"
 	"github.com/codegangsta/cli"
-	"github.com/flexiant/kdeploy/resolvers"
+	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
@@ -30,9 +30,9 @@ func CmdDeploy(c *cli.Context) {
 		log.Fatal(fmt.Errorf("Error parsing URL: '%s'", kubeware))
 	}
 
-	for _, urlResolver := range resolvers.URLResolvers {
-		if urlResolver.CanHandle(kubewareURL) {
-			localKubePath, err = urlResolver.Resolve(kubewareURL)
+	for _, fetcher := range fetchers.AllFetchers {
+		if fetcher.CanHandle(kubewareURL) {
+			localKubePath, err = fetcher.Fetch(kubewareURL)
 			utils.CheckError(err)
 		}
 	}
