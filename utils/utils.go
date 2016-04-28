@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 )
 
@@ -42,7 +42,7 @@ func FileExists(name string) bool {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 }
 

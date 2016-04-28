@@ -68,9 +68,9 @@ func TestAttributeDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	val, err := defaults.GetString("rc/frontend/name")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	val, ok := defaults["rc"].(map[string]interface{})["frontend"].(map[string]string)["name"]
+	if ok == false {
+		t.Fatalf("unexpected error")
 	} else if val != "php-redis" {
 		t.Errorf("unexpected value: %v", val)
 	}

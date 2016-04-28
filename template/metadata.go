@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/flexiant/digger"
 	"github.com/flexiant/kdeploy/utils"
 	"gopkg.in/yaml.v2"
@@ -167,7 +167,7 @@ func (m Metadata) ParseControllers(attributes map[string]interface{}) (map[strin
 func (m Metadata) parseTemplates(templates map[string]string, attributes map[string]interface{}) (map[string]interface{}, error) {
 	var specs = map[string]interface{}{}
 	for specName, templateFile := range templates {
-		log.Debugf("Going to parse %s/%s", m.path, templateFile)
+		glog.V(2).Infof("Parsing %s/%s", m.path, templateFile)
 		specMap, err := parseTemplate(fmt.Sprintf("%s/%s", m.path, templateFile), attributes)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing template %s: %v", templateFile, err)

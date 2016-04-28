@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
@@ -19,23 +19,23 @@ func CmdShow(c *cli.Context) {
 	kubeware := os.Getenv("KDEPLOY_KUBEWARE")
 	localKubePath, err := fetchers.Fetch(kubeware)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+		glog.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
 	}
 
-	log.Debugf("Going to parse kubeware in %s", localKubePath)
+	glog.V(2).Infof("Going to parse kubeware in %s", localKubePath)
 
 	metadata := template.ParseMetadata(localKubePath)
 	defaults, err := metadata.AttributeDefaults()
 	utils.CheckError(err)
 
-	log.Debugf("Building attributes")
+	glog.V(2).Infof("Building attributes")
 	attributes := template.BuildAttributes(os.Getenv("KDEPLOY_ATTRIBUTE"), defaults)
 
-	log.Debugf("Parsing services")
+	glog.V(2).Infof("Parsing services")
 	servicesSpecs, err := metadata.ParseServices(attributes)
 	utils.CheckError(err)
 
-	log.Debugf("Parsing controllers")
+	glog.V(2).Infof("Parsing controllers")
 	controllersSpecs, err := metadata.ParseControllers(attributes)
 	utils.CheckError(err)
 

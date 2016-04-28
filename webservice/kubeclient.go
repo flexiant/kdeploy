@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
 )
@@ -371,7 +371,7 @@ func (k *kubeClient) IsServiceDeployed(namespace, svcName string) (bool, error) 
 
 func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 	// Get currently deployed service
-	log.Debugf("Get currently deployed service")
+	glog.V(4).Infof("Getting currently deployed service")
 	deployedSvcJSON, err := k.getService(namespace, svcName)
 	if err != nil {
 		return err
@@ -382,21 +382,21 @@ func (k *kubeClient) ReplaceService(namespace, svcName, svcJSON string) error {
 		return err
 	}
 	// Unmarshal service to be modified
-	log.Debugf("Unmarshal service to be modified")
+	glog.V(4).Infof("Unmarshaling service to be modified")
 	var modifiedSvc map[string]interface{}
 	err = json.Unmarshal([]byte(svcJSON), &modifiedSvc)
 	if err != nil {
 		return err
 	}
 	// Some fields must match or the update will be denied
-	log.Debugf("Merging inmutables")
+	glog.V(4).Infof("Merging inmutables")
 	err = mergeServiceInmutableFields(modifiedSvc, deployedSvc)
 	if err != nil {
 		return err
 	}
 	// For concerto-LB, we need to preserve the current nodePort, since this wouldnt result in a
 	// LB update and the haproxy rules would still refer to the old one, raising a 503 http error on access
-	log.Debugf("Preserving nodeports")
+	glog.V(4).Infof("Preserving nodeports")
 	err = preserveNodePorts(modifiedSvc, deployedSvc)
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func preserveNodePorts(modifiedSvc map[string]interface{}, deployedService model
 		for _, newport := range newports {
 			mport := newport.(map[string]interface{})
 			if int(mport["port"].(float64)) == oldport.Port {
-				log.Debugf("Found port %v already associated with nodePort %v for service '%s'", oldport.Port, oldport.NodePort, deployedService.GetName())
+				glog.V(4).Infof("Found port %v already associated with nodePort %v for service '%s'", oldport.Port, oldport.NodePort, deployedService.GetName())
 				mport["nodePort"] = oldport.NodePort
 			}
 		}

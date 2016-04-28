@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/delete/strategies"
 	"github.com/flexiant/kdeploy/fetchers"
@@ -16,7 +16,7 @@ import (
 
 // CmdDelete implements 'delete' command
 func CmdDelete(c *cli.Context) {
-	log.Debugf("deleting : %s", os.Getenv("KDEPLOY_KUBEWARE"))
+	glog.V(4).Infof("deleting : %s", os.Getenv("KDEPLOY_KUBEWARE"))
 
 	var kubewareName string
 	var kubewareVersion string
@@ -27,7 +27,7 @@ func CmdDelete(c *cli.Context) {
 	kubeware := os.Getenv("KDEPLOY_KUBEWARE")
 	localKubePath, err := fetchers.Fetch(kubeware)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+		glog.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
 	}
 
 	if localKubePath != "" {
@@ -45,12 +45,12 @@ func CmdDelete(c *cli.Context) {
 	// get services which are currently deployed as part of the kube
 	serviceList, err := kubernetes.GetServicesForNamespace(namespace, labelSelector)
 	utils.CheckError(err)
-	log.Debugf("Services: %v", serviceList)
+	glog.V(4).Infof("Services: %v", serviceList)
 
 	// get controllers which are currently deployed as part of the kube
 	controllerList, err := kubernetes.GetControllersForNamespace(namespace, labelSelector)
 	utils.CheckError(err)
-	log.Debugf("Controllers: %v", controllerList)
+	glog.V(4).Infof("Controllers: %v", controllerList)
 
 	// If no resources found that means it's not deployed
 	if len(*serviceList) == 0 || len(*controllerList) == 0 {
@@ -58,7 +58,7 @@ func CmdDelete(c *cli.Context) {
 		if kubewareVersion != "" {
 			version = fmt.Sprintf(" (%s)", kubewareVersion)
 		}
-		log.Warnf("Could not delete kubeware '%s'%s since it is not currently deployed", kubewareName, version)
+		glog.Warningf("Could not delete kubeware '%s'%s since it is not currently deployed", kubewareName, version)
 		return
 	}
 
@@ -67,7 +67,7 @@ func CmdDelete(c *cli.Context) {
 	err = ds.Delete(namespace, svcNames(serviceList), rcNames(controllerList))
 	utils.CheckError(err)
 
-	log.Infof("Kubeware '%s.%s' has been deleted", namespace, kubewareName)
+	glog.Infof("Kubeware '%s.%s' has been deleted", namespace, kubewareName)
 }
 
 func rcNames(rcl *[]models.ReplicaController) []string {

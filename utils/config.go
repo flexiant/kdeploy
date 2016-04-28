@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v2"
@@ -130,7 +130,7 @@ func ReadConfig() (*Config, error) {
 
 // readKubeConfigFrom reads kubeconfig and use it to fill a kdeploy config
 func readKubeConfigFrom(path string) (*Config, error) {
-	log.Debugf("readKubeConfigFrom %s", path)
+	glog.V(4).Infof("readKubeConfigFrom %s", path)
 	// Read kubeconfig
 	if !FileExists(path) {
 		return nil, fmt.Errorf("Could not locate file %s", path)
@@ -154,13 +154,13 @@ func readKubeConfigFrom(path string) (*Config, error) {
 	// add path
 	config.Path = path
 
-	log.Debugf("returning config from kubeconfig: %+v", config)
+	glog.V(4).Infof("returning config from kubeconfig: %+v", config)
 	return config, nil
 }
 
 // readConfigFromKubeConfig extract Kubeconfig fields to build a Kdeploy config structure
 func readConfigFromKubeConfig(kc *KubeConfig) *Config {
-	log.Debugf("readConfigFromKubeConfig %+v", kc)
+	glog.V(4).Infof("readConfigFromKubeConfig %+v", kc)
 	// currentContext := kc.CurrentContext
 	var userID, clusterID string
 	config := &Config{}
@@ -235,7 +235,7 @@ func ReadConfigFrom(path string) (*Config, error) {
 }
 
 func InitializeConfig(c *cli.Context) error {
-	log.Debug("InitializeConfig")
+	glog.V(4).Info("InitializeConfig")
 	// overwrite with environment/arguments vars
 	if overwKdeployConfig := c.String("kdeploy-config"); overwKdeployConfig != "" {
 		cachedConfig.Path = overwKdeployConfig
@@ -278,15 +278,15 @@ func InitializeConfig(c *cli.Context) error {
 	cachedConfig.Connection.Insecure = cachedConfig.Connection.Insecure || c.Bool("insecure")
 
 	if cachedConfig.Connection.APIEndpoint == "" {
-		log.Warn("Please use parameter --kubernetes-endpoint")
+		glog.Warning("Please use parameter --kubernetes-endpoint")
 		parameters = true
 	}
 	if cachedConfig.Connection.Cert == "" {
-		log.Warn("Please use parameter --client-cert")
+		glog.Warning("Please use parameter --client-cert")
 		parameters = true
 	}
 	if cachedConfig.Connection.Key == "" {
-		log.Warn("Please use parameter --client-key")
+		glog.Warning("Please use parameter --client-key")
 		parameters = true
 	}
 

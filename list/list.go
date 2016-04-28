@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/models"
 	"github.com/flexiant/kdeploy/utils"
@@ -20,11 +20,11 @@ func CmdList(c *cli.Context) {
 	kubernetes, err := webservice.NewKubeClient()
 	utils.CheckError(err)
 	// Get all services to extract their kubeware labels
-	log.Debug("Get all services to extract their kubeware labels ...")
+	glog.V(2).Infof("Get all services to extract their kubeware labels ...")
 	serviceList, err := kubernetes.GetServices()
 	utils.CheckError(err)
 	// Get all controllers to extract their kubeware labels
-	log.Debug("Get all controllers to extract their kubeware labels ...")
+	glog.V(2).Infof("Get all controllers to extract their kubeware labels ...")
 	controllersList, err := kubernetes.GetControllers()
 	utils.CheckError(err)
 	// build the list to be printed
@@ -85,6 +85,6 @@ func CmdList(c *cli.Context) {
 		}
 		w.Flush()
 	} else {
-		log.Infof("No Kubeware deployed")
+		glog.Infof("No Kubeware deployed")
 	}
 }

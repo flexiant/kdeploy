@@ -2,8 +2,9 @@ package main
 
 import (
 	"os"
+  "flag"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/delete"
 	"github.com/flexiant/kdeploy/deploy"
@@ -14,7 +15,7 @@ import (
 )
 
 func cmdNotFound(c *cli.Context, command string) {
-	log.Fatalf(
+	glog.Fatalf(
 		"%s: '%s' is not a %s command. See '%s --help'.",
 		c.App.Name,
 		command,
@@ -24,12 +25,10 @@ func cmdNotFound(c *cli.Context, command string) {
 }
 
 func prepareFlags(c *cli.Context) error {
-
-	if c.Bool("debug") {
-		os.Setenv("DEBUG", "1")
-		log.SetOutput(os.Stderr)
-		log.SetLevel(log.DebugLevel)
-	}
+	v :=  c.Int("verbosity")
+  flag.Parse()
+  flag.Lookup("logtostderr").Value.Set("true")
+  flag.Lookup("v").Value.Set(string(v))
 
 	// Initialize cached config
 	utils.InitializeConfig(c)
@@ -55,9 +54,11 @@ func main() {
 	// overwritten
 
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:  "debug, D",
-			Usage: "Enable debug mode",
+		cli.IntFlag{
+      EnvVar: "KDEPLOY_VERBOSITY",
+			Name:  "verbosity, V",
+      Value: 1,
+			Usage: "Verbosity level",
 		},
 		cli.BoolFlag{
 			Name:  "insecure",

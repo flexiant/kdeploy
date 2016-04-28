@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/flexiant/kdeploy/utils"
 )
 
@@ -106,10 +106,10 @@ func (r *RestService) Post(urlPath string, json []byte) ([]byte, int, error) {
 	output := strings.NewReader(string(json))
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Post request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		glog.V(3).Infof("Post request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 		return nil, 200, nil
 	} else {
-		log.Debugf("Post request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		glog.V(3).Infof("Post request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 	}
 
 	response, err := r.client.Post(loc.String(), "application/json", output)
@@ -131,10 +131,10 @@ func (r *RestService) Put(urlPath string, json []byte) ([]byte, int, error) {
 	loc.Path = urlPath
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		glog.V(3).Infof("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 		return nil, 200, nil
 	}
-	log.Debugf("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+	glog.V(3).Infof("Put request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 
 	request, err := http.NewRequest("PUT", loc.String(), bytes.NewBuffer(json))
 	if err != nil {
@@ -160,10 +160,10 @@ func (r *RestService) Patch(urlPath string, json []byte) ([]byte, int, error) {
 	loc.Path = urlPath
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Patch request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		glog.V(3).Infof("Patch request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 		return nil, 200, nil
 	} else {
-		log.Debugf("Patch request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
+		glog.V(3).Infof("Patch request url: %s , body:\n%s", loc.String(), string(prettyprint(json)))
 	}
 
 	request, err := http.NewRequest("PATCH", loc.String(), bytes.NewBuffer(json))
@@ -190,10 +190,10 @@ func (r *RestService) Delete(urlPath string) ([]byte, int, error) {
 	loc.Path = urlPath
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Delete request url: %s", loc.String())
+		glog.V(3).Infof("Delete request url: %s", loc.String())
 		return nil, 200, nil
 	} else {
-		log.Debugf("Delete request url: %s", loc.String())
+		glog.V(3).Infof("Delete request url: %s", loc.String())
 	}
 
 	request, err := http.NewRequest("DELETE", loc.String(), nil)
@@ -225,10 +225,10 @@ func (r *RestService) Get(urlPath string, params map[string]string) ([]byte, int
 	loc.RawQuery = values.Encode()
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Get request url: %s", loc.String())
+		glog.V(3).Infof("Get request url: %s", loc.String())
 		return nil, 200, nil
 	} else {
-		log.Debugf("Get request url: %s", loc.String())
+		glog.V(3).Infof("Get request url: %s", loc.String())
 	}
 
 	response, err := r.client.Get(loc.String())
@@ -254,9 +254,9 @@ func (r *RestService) GetFile(urlPath string, directory string) (string, error) 
 	loc.Path = urlPath
 
 	if os.Getenv("KDEPLOY_DRYRUN") == "1" {
-		log.Infof("Get file request url: %s destination: %s", loc.String(), directory)
+		glog.V(3).Infof("Get file request url: %s destination: %s", loc.String(), directory)
 	} else {
-		log.Debugf("Get file request url: %s destination: %s", loc.String(), directory)
+		glog.V(3).Infof("Get file request url: %s destination: %s", loc.String(), directory)
 	}
 
 	response, err := r.client.Get(loc.String())

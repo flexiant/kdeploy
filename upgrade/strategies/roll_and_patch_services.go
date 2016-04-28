@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/flexiant/kdeploy/utils"
 	"github.com/flexiant/kdeploy/webservice"
 )
@@ -25,16 +25,16 @@ func RollRcPatchSvcStrategy(k webservice.KubeClient, maxReplicasExcess uint) Upg
 }
 
 func (s *rollPatchStrategy) Upgrade(namespace string, services, controllers map[string]string) error {
-	log.Debugf("Using rolling upgrade strategy")
+	glog.V(4).Infof("Using rolling upgrade strategy")
 
 	// for each rc
 	for rcName, rcJSON := range controllers {
 
 		tempName := fmt.Sprintf("%s-next", rcName)
-		log.Debugf("Creating temporal RC '%s'", tempName)
+		glog.V(4).Infof("Creating temporal RC '%s'", tempName)
 		_, err := s.createRCAsRollingTarget(namespace, tempName, rcJSON)
 		if err != nil {
-			log.Debugf("error creating rolling target: %v", err)
+			glog.V(4).Infof("error creating rolling target: %v", err)
 			return err
 		}
 		// read desired replicas
@@ -42,7 +42,7 @@ func (s *rollPatchStrategy) Upgrade(namespace string, services, controllers map[
 		if err != nil {
 			return err
 		}
-		log.Debugf("Want '%v' replicas", targetReplicas)
+		glog.V(4).Infof("Want '%v' replicas", targetReplicas)
 		// roll them
 		err = s.rollReplicationController(namespace, rcName, tempName, targetReplicas)
 		if err != nil {
@@ -57,7 +57,7 @@ func (s *rollPatchStrategy) Upgrade(namespace string, services, controllers map[
 	for svcName, svcJSON := range services {
 		err := s.upgradeService(namespace, svcName, svcJSON)
 		if err != nil {
-			log.Debugf("Error upgrading service: %v", err)
+			glog.Errorf("Error upgrading service: %v", err)
 			return err
 		}
 	}
@@ -71,26 +71,26 @@ func (s *rollPatchStrategy) Upgrade(namespace string, services, controllers map[
 //   dont get mixed with the previous version ones
 func (s *rollPatchStrategy) createRCAsRollingTarget(namespace, name, rcJSON string) (string, error) {
 	// parse json object
-	log.Debugf("parsing json for new RC '%s'", name)
+	glog.V(4).Infof("parsing json for new RC '%s'", name)
 	var rc map[string]interface{}
 	err := json.Unmarshal([]byte(rcJSON), &rc)
 	if err != nil {
 		return "", fmt.Errorf("could not unmarshal rc: %v", err)
 	}
 	// set zero replicas
-	log.Debugf("setting zero replicas for new RC '%s'", name)
+	glog.V(4).Infof("setting zero replicas for new RC '%s'", name)
 	err = setZeroReplicasOnRC(rc)
 	if err != nil {
 		return "", fmt.Errorf("could not zero replicas: %v", err)
 	}
 	// rename it
-	log.Debugf("renaming new RC '%s'", name)
+	glog.V(4).Infof("renaming new RC '%s'", name)
 	renameRC(rc, name)
 	// create it
-	log.Debugf("creating new RC '%s'", name)
+	glog.V(4).Infof("creating new RC '%s'", name)
 	newJSON, err := json.Marshal(rc)
 	if err != nil {
-		log.Debugf("could not marshal modified rc: %v", err)
+		glog.Errorf("could not marshal modified rc: %v", err)
 		return "", fmt.Errorf("could not marshal modified rc: %v", err)
 	}
 	return s.kubeClient.CreateReplicaController(namespace, newJSON)
@@ -103,13 +103,13 @@ func (s *rollPatchStrategy) upgradeService(namespace, svcName, svcJSON string) e
 		return err
 	}
 	if deployed {
-		log.Debugf("Patch service '%s'", svcName)
+		glog.V(4).Infof("Patch service '%s'", svcName)
 		err = s.kubeClient.PatchService(namespace, svcName, onlyMetadata(svcJSON))
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Debugf("Creating service '%s' since it wasnt deployed previously", svcName)
+		glog.V(4).Infof("Creating service '%s' since it wasnt deployed previously", svcName)
 		_, err = s.kubeClient.CreateService(namespace, []byte(svcJSON))
 		if err != nil {
 			return err
@@ -135,17 +135,17 @@ func onlyMetadata(svcJSON string) string {
 }
 
 func (s *rollPatchStrategy) rollReplicationController(ns, oldRCid, newRCid string, targetReplicas uint) error {
-	log.Debugf("Rolling out RC '%s' to '%s'", oldRCid, newRCid)
+	glog.V(4).Infof("Rolling out RC '%s' to '%s'", oldRCid, newRCid)
 	for ; ; time.Sleep(1 * time.Second) {
 		// build RC objects
 		oldRC, err := buildRCObject(s.kubeClient, ns, oldRCid)
 		if err != nil {
-			log.Debugf("error: %v", err)
+			glog.Errorf("error: %v", err)
 			return err
 		}
 		newRC, err := buildRCObject(s.kubeClient, ns, newRCid)
 		if err != nil {
-			log.Debugf("error: %v", err)
+			glog.Errorf("error: %v", err)
 			return err
 		}
 		//
@@ -161,7 +161,7 @@ func (s *rollPatchStrategy) rollReplicationController(ns, oldRCid, newRCid strin
 				totalAllowedReplicas := targetReplicas + s.maxReplicasExcess
 				if totalCurrentReplicas < totalAllowedReplicas {
 					s.kubeClient.SetSpecReplicas(ns, newRCid, newRC.specReplicas+1)
-					log.Debugf("Set '%s' to '%v' replicas", newRCid, newRC.specReplicas+1)
+					glog.V(4).Infof("Set '%s' to '%v' replicas", newRCid, newRC.specReplicas+1)
 				}
 			}
 		}
@@ -172,7 +172,7 @@ func (s *rollPatchStrategy) rollReplicationController(ns, oldRCid, newRCid strin
 				totalCurrentReplicas := newRC.readyReplicas + oldRC.readyReplicas
 				if totalCurrentReplicas > targetReplicas {
 					s.kubeClient.SetSpecReplicas(ns, oldRCid, oldRC.specReplicas-1)
-					log.Debugf("Set '%s' to '%v' replicas", oldRCid, oldRC.specReplicas-1)
+					glog.V(4).Infof("Set '%s' to '%v' replicas", oldRCid, oldRC.specReplicas-1)
 				}
 			}
 		}

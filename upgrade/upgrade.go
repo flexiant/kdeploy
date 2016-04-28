@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/codegangsta/cli"
 	"github.com/flexiant/kdeploy/fetchers"
 	"github.com/flexiant/kdeploy/template"
@@ -23,10 +23,10 @@ func CmdUpgrade(c *cli.Context) {
 	kubeware = os.Getenv("KDEPLOY_KUBEWARE")
 	localKubePath, err = fetchers.Fetch(kubeware)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
+		glog.Fatal(fmt.Errorf("Could not fetch kubeware: '%s' (%v)", kubeware, err))
 	}
 
-	log.Debugf("Going to parse kubeware in %s", localKubePath)
+	glog.V(2).Infof("Going to parse kubeware in %s", localKubePath)
 
 	md := template.ParseMetadata(localKubePath)
 	utils.CheckError(err)
@@ -41,9 +41,9 @@ func CmdUpgrade(c *cli.Context) {
 	v, err := kubernetes.FindDeployedKubewareVersion(namespace, md.Name)
 	utils.CheckError(err)
 	if v == "" {
-		log.Fatalf("Kubeware '%s.%s' is not deployed and thus it can't be upgraded", namespace, md.Name)
+		glog.Fatalf("Kubeware '%s.%s' is not deployed and thus it can't be upgraded", namespace, md.Name)
 	}
-	log.Infof("Found version %s of %s.%s", v, namespace, md.Name)
+	glog.Infof("Found version %s of %s.%s", v, namespace, md.Name)
 
 	// Check if equal or newer version already exists, error if so
 	deployedVersion, err := version.NewVersion(v)
@@ -51,22 +51,22 @@ func CmdUpgrade(c *cli.Context) {
 	upgradeVersion, err := version.NewVersion(md.Version)
 	utils.CheckError(err)
 	if upgradeVersion.LessThan(deployedVersion) {
-		log.Fatalf("Can not upgrade to version '%s' since version '%s' is already deployed", md.Version, v)
+		glog.Fatalf("Can not upgrade to version '%s' since version '%s' is already deployed", md.Version, v)
 	}
 
 	// build attributes merging "role list" to defaults
-	log.Debugf("Building attributes")
+	glog.V(4).Infof("Building attributes")
 	defaults, err := md.AttributeDefaults()
 	utils.CheckError(err)
 	attributes := template.BuildAttributes(c.String("attribute"), defaults)
 
 	// get services and parse each one
-	log.Debugf("Parsing services")
+	glog.V(4).Infof("Parsing services")
 	servicesSpecs, err := md.ParseServices(attributes)
 	utils.CheckError(err)
 
 	// get replica controllers and parse each one
-	log.Debugf("Parsing controllers")
+	glog.V(4).Infof("Parsing controllers")
 	controllersSpecs, err := md.ParseControllers(attributes)
 	utils.CheckError(err)
 
@@ -75,5 +75,5 @@ func CmdUpgrade(c *cli.Context) {
 	upgStrategy := upgradeStrategies.BuildUpgradeStrategy(os.Getenv("KDEPLOY_UPGRADE_STRATEGY"), kubernetes)
 	upgStrategy.Upgrade(namespace, servicesSpecs, controllersSpecs)
 
-	log.Infof("Kubeware '%s.%s' has been upgraded from version '%s' to '%s'", namespace, md.Name, v, md.Version)
+	glog.Infof("Kubeware '%s.%s' has been upgraded from version '%s' to '%s'", namespace, md.Name, v, md.Version)
 }

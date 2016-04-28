@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/golang/glog"
 	"github.com/flexiant/kdeploy/webservice"
 )
 
@@ -53,7 +53,7 @@ func (zr *waitZeroReplicas) deleteReplicationController(namespace string, name s
 		if err != nil {
 			return err
 		}
-		log.Debugf("Waiting for all pods to be gone (%s.%s %v remaining)", namespace, name, n)
+		glog.V(1).Infof("Waiting for all pods to be gone (%s.%s %v remaining)", namespace, name, n)
 	}
 	// then delete the RC
 	return zr.kubeClient.DeleteReplicationController(namespace, name)
