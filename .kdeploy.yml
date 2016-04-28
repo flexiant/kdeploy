@@ -1,5 +1,0 @@
-connection:
-  apiendpoint: https://manuel-master-01.staging.concerto.io:6443
-  cacert: ./certs/ca_cert.pem
-  cert: ./certs/docker.crt
-  key: ./certs/docker.key
